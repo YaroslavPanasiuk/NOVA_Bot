@@ -9,7 +9,7 @@ from bot.config import ADMINS
 from aiogram import Bot
 import re
 from aiogram.filters import Command
-from bot.texts import ALREADY_REGISTERED_PARTICIPANT, MENTOR_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, MENTOR_GOAL_PROMPT, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_MENTOR, PROFILE_CANCELLED, MENTOR_NOT_FOUND, NEW_MENTOR_PENDING, MANAGE_PENDING_MENTORS, NO_PARTICIPANTS, MY_PARTICIPANTS_HEADER, CONFIRM_PROFILE
+from bot.texts import ALREADY_REGISTERED_PARTICIPANT, MENTOR_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, MENTOR_GOAL_PROMPT, MENTOR_PHOTO_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_MENTOR, PROFILE_CANCELLED, MENTOR_NOT_FOUND, NEW_MENTOR_PENDING, MANAGE_PENDING_MENTORS, NO_PARTICIPANTS, MY_PARTICIPANTS_HEADER, CONFIRM_PROFILE
 
 
 router = Router()
@@ -55,7 +55,7 @@ async def mentor_goal(message: Message, state: FSMContext):
         await state.update_data(fundraising_goal=goal)
         await database.set_goal(telegram_id=message.from_user.id, goal=goal)
         await state.set_state(MentorProfile.photo)
-        await message.answer(PARTICIPANT_GOAL_PROMPT)
+        await message.answer(MENTOR_PHOTO_PROMPT)
     except ValueError:
         await message.answer(INVALID_NUMBER)
 
