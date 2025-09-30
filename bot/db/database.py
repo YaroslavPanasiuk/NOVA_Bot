@@ -29,7 +29,7 @@ async def init_db():
             instagram TEXT,
             fundraising_goal NUMERIC(12,2),
             photo_url TEXT,
-            description TEXT,
+            description TEXT DEFAULT 'no description',
             status TEXT DEFAULT 'pending',
             mentor_id BIGINT REFERENCES bot_users(telegram_id),
             created_at TIMESTAMP DEFAULT NOW()
