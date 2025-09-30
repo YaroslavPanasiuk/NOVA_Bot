@@ -1,0 +1,184 @@
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaDocument, FSInputFile
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from bot.db import database
+from bot.utils.formatters import format_temp_profile, format_profile
+from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb
+import re
+from bot.texts import ALREADY_REGISTERED_MENTOR, PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, MANAGE_YOUR_GROUP, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE
+
+router = Router()
+
+class ParticipantProfile(StatesGroup):
+    select_mentor = State()
+    instagram = State()
+    fundraising_goal = State()
+    photo = State()
+    confirm_profile = State()
+
+@router.callback_query(F.data == "role:participant")
+async def start_participant(callback: CallbackQuery, state: FSMContext):
+    user_role = await database.get_user_by_id(callback.from_user.id)
+    if user_role.get("role") == "mentor":
+        return await callback.answer(ALREADY_REGISTERED_MENTOR, show_alert=True)
+    mentors = await database.get_mentors()
+    if not mentors:
+        await callback.message.answer(NO_MENTORS_AVAILABLE)
+        return
+
+    # store mentors list in FSM
+    await state.update_data(mentors=mentors, current_index=0, role="participant")
+
+    first_mentor = mentors[0]
+    text = await format_profile(first_mentor["telegram_id"])
+    kb = mentor_carousel_kb(0, len(mentors), first_mentor["telegram_id"])
+
+    await state.set_state(ParticipantProfile.select_mentor)
+    await callback.message.answer(PARTICIPANT_SELECT_MENTOR_PROMPT)
+    if first_mentor.get("photo_url"):
+        document = first_mentor["photo_url"]
+    else:
+        document = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    await callback.message.answer_document(document=document, caption=text, reply_markup=kb, parse_mode="HTML")
+
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("mentor_select:"))
+async def mentor_select(callback: CallbackQuery, state: FSMContext):
+    mentor_id = int(callback.data.split(":")[1])
+    user_id = callback.from_user.id
+
+    await state.update_data(mentor_id=mentor_id)
+    await database.set_mentor(telegram_id=user_id, mentor=mentor_id)
+
+    await database.set_participant_mentor(user_id, mentor_id)
+    mentor_profile = await format_profile(mentor_id)
+    mentor = await database.get_user_by_id(mentor_id)
+    text = f"{SELECTED_MENTOR} {mentor.get('first_name') or ''} {mentor.get('last_name') or ''} (@{mentor.get('username') or ''})!"
+    await callback.message.answer(text, parse_mode="HTML")
+    await state.set_state(ParticipantProfile.instagram)
+    await callback.message.answer(PARTICIPANT_INSTAGRAM_PROMPT)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("mentor_nav:"))
+async def mentor_navigation(callback: CallbackQuery, state: FSMContext):
+    _, direction, index = callback.data.split(":")
+    index = int(index)
+
+    data = await state.get_data()
+    mentors = data.get("mentors", [])
+    if not mentors:
+        return await callback.answer(NO_MENTORS_AVAILABLE, show_alert=True)
+
+    # calculate new index
+    if direction == "left":
+        new_index = (index - 1) % len(mentors)
+    else:  # right
+        new_index = (index + 1) % len(mentors)
+
+    await state.update_data(current_index=new_index)
+    mentor = mentors[new_index]
+
+    text = await format_profile(mentor["telegram_id"])
+    kb = mentor_carousel_kb(new_index, len(mentors), mentor["telegram_id"])
+
+    if mentor.get("photo_url"):
+        document = mentor["photo_url"]
+    else:
+        document = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    await callback.message.edit_media(
+        media=InputMediaDocument(media=document, caption=text, parse_mode="HTML" ), 
+        reply_markup=kb
+    )
+    await callback.answer()
+
+# Instagram input
+@router.message(ParticipantProfile.instagram)
+async def participant_instagram(message: Message, state: FSMContext):
+    insta = message.text.strip()
+    insta = insta.lstrip('@')
+
+    if not re.match(r'^(?!.*\.\.)(?!\.)(?!.*\.$)[A-Za-z0-9._]{5,30}$', insta):
+        await message.answer(
+            INVALID_INSTAGRAM
+        )
+        return
+
+    await state.update_data(instagram=insta)
+    await database.set_instagram(telegram_id=message.from_user.id, instagram=insta)
+    await state.set_state(ParticipantProfile.fundraising_goal)
+    await message.answer(PARTICIPANT_GOAL_PROMPT)
+
+# Fundraising goal
+@router.message(ParticipantProfile.fundraising_goal)
+async def participant_goal(message: Message, state: FSMContext):
+    try:
+        goal = float(message.text)
+        await state.update_data(fundraising_goal=goal)
+        await database.set_goal(telegram_id=message.from_user.id, goal=goal)
+        await state.set_state(ParticipantProfile.photo)
+        await message.answer(PARTICIPANT_PHOTO_PROMPT)
+    except ValueError:
+        await message.answer(INVALID_NUMBER)
+
+# Photo
+@router.message(ParticipantProfile.photo, F.photo)
+async def participant_photo_compressed(message: Message, state: FSMContext):
+    await message.answer(SEND_AS_FILE_WARNING)
+
+# Uncompressed photo (file) handler
+@router.message(ParticipantProfile.photo, F.document)
+async def participant_photo_file(message: Message, state: FSMContext):
+    # Only accept images
+    if not message.document.mime_type.startswith("image/"):
+        await message.answer(NOT_IMAGE_FILE)
+        return
+
+    file_id = message.document.file_id
+    await state.update_data(photo_url=file_id)
+    await database.set_photo(telegram_id=message.from_user.id, file_id=file_id)
+
+    data = await state.get_data()
+    text = await format_temp_profile(message.from_user.id, data)
+    text += CONFIRM_PROFILE
+    await state.set_state(ParticipantProfile.confirm_profile)
+    await message.answer_document(document=file_id, caption=text, reply_markup=participant_confirm_profile_kb(),  parse_mode="HTML")
+
+# Confirm participant profile
+@router.callback_query(F.data.startswith("participant_confirm_profile:"))
+async def participant_confirm(callback: CallbackQuery, state: FSMContext):
+    confirm_str = callback.data.split(":")[1]
+    if confirm_str == "yes":
+        data = await state.get_data()
+        await database.save_participant_profile(
+            telegram_id=callback.from_user.id,
+            mentor_id=data["mentor_id"],
+            instagram=data["instagram"],
+            fundraising_goal=data["fundraising_goal"],
+            photo_url=data["photo_url"]
+        )
+        await callback.message.answer(PROFILE_SAVED_PARTICIPANT)
+        await callback.bot.send_message(data["mentor_id"], NEW_PARTICIPANT_JOINED)
+        text = await format_profile(callback.from_user.id)
+        await callback.bot.send_document(data["mentor_id"], document=data["photo_url"], caption=text, parse_mode="HTML")
+        await callback.bot.send_message(data["mentor_id"], MANAGE_YOUR_GROUP)
+    else:
+        await callback.message.answer(PROFILE_CANCELLED)
+    await state.clear()
+    await callback.answer() 
+
+
+@router.message(F.text.startswith("/mentor"))
+async def remove_user_cmd(message: Message):
+
+    mentor_id = await database.get_user_by_id(message.from_user.id).get("mentor_id")
+    text = await format_profile(mentor_id)
+    mentor = await database.get_user_by_id(mentor_id)
+
+    if mentor.get("photo_url"):
+        document = mentor["photo_url"]
+    else:
+        document = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    await message.answer_document(document=document, caption=text, parse_mode="HTML")
