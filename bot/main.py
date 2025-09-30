@@ -2,7 +2,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from bot.config import BOT_TOKEN
 from bot.handlers import start, mentor, participant, admin
-from bot.utils.logging import setup_logging
+from bot.utils.logs import setup_logging
 from bot.db.database import init_db
 from bot.handlers import register_handlers
 

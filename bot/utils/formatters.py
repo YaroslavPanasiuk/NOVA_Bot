@@ -1,5 +1,5 @@
 from bot.db import database
-from bot.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION
+from bot.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR
 
 async def format_profile(user_id: int) -> str:
     user = await database.get_user_by_id(user_id)
@@ -14,6 +14,7 @@ async def format_profile(user_id: int) -> str:
         f"{PROFILE_PHONE}{user.get('phone_number') or '—'}\n"
         f"{PROFILE_INSTAGRAM}{user.get('instagram') or '—'}\n"
         f"{PROFILE_GOAL}{format_amount(user.get('fundraising_goal', 0.0))}\n"
+        f"{PROFILE_JAR}{user.get('jar_url', '—')}\n"
     )
 
     if user.get('role') == "mentor":

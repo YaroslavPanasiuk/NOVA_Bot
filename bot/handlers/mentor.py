@@ -8,9 +8,10 @@ from bot.keyboards.common import mentor_confirm_profile_kb, mentor_confirm_profi
 from bot.config import ADMINS
 from aiogram import Bot
 from bot.utils.files import reupload_as_photo
+from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
 import re
 from aiogram.filters import Command
-from bot.texts import ALREADY_REGISTERED_PARTICIPANT, MENTOR_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, MENTOR_GOAL_PROMPT, MENTOR_PHOTO_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_MENTOR, PROFILE_CANCELLED, MENTOR_NOT_FOUND, NEW_MENTOR_PENDING, MANAGE_PENDING_MENTORS, NO_PARTICIPANTS, MY_PARTICIPANTS_HEADER, CONFIRM_PROFILE, MENTOR_DESCRIPTION_PROMPT, PROFILE_CONFIRMED, CONFIRM_PROFILE_VIEW
+from bot.texts import ALREADY_REGISTERED_PARTICIPANT, MENTOR_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, MENTOR_GOAL_PROMPT, MENTOR_PHOTO_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_MENTOR, PROFILE_CANCELLED, MENTOR_NOT_FOUND, NEW_MENTOR_PENDING, MANAGE_PENDING_MENTORS, NO_PARTICIPANTS, MY_PARTICIPANTS_HEADER, CONFIRM_PROFILE, MENTOR_DESCRIPTION_PROMPT, PROFILE_CONFIRMED, CONFIRM_PROFILE_VIEW, INVALID_JAR_URL, MENTOR_JAR_PROMPT
 
 
 router = Router()
@@ -22,6 +23,7 @@ class MentorProfile(StatesGroup):
     confirm_profile_info = State()
     description = State()
     confirm_profile_view = State()
+    monobank_jar = State()
 
 # Start mentor registration
 @router.callback_query(F.data == "role:mentor")
@@ -35,9 +37,10 @@ async def start_mentor(callback: CallbackQuery, state: FSMContext):
 async def mentor_instagram(message: Message, state: FSMContext):
     insta = message.text.strip()
     insta = insta.lstrip('@')
-    print(f"Received Instagram: {insta}")
 
-    if not re.match(r'^(?!.*\.\.)(?!\.)(?!.*\.$)[A-Za-z0-9._]{5,30}$', insta):
+    valid = await instagram_valid(insta)
+
+    if not valid:
         await message.answer(
             INVALID_INSTAGRAM
         )
@@ -50,17 +53,39 @@ async def mentor_instagram(message: Message, state: FSMContext):
 # Fundraising goal
 @router.message(MentorProfile.fundraising_goal)
 async def mentor_goal(message: Message, state: FSMContext):
+    text = message.text.strip().replace(",", ".").lstrip("грн").strip()
+    valid = await fundraising_goal_valid(text)
+    if not valid:
+        await message.answer(INVALID_NUMBER)
+        return
     try:
-        goal = float(message.text)
-        await state.update_data(fundraising_goal=goal)
-        await database.set_goal(telegram_id=message.from_user.id, goal=goal)
-        await state.set_state(MentorProfile.description)
-        await message.answer(MENTOR_DESCRIPTION_PROMPT)
+        goal = float(text)
     except ValueError:
         await message.answer(INVALID_NUMBER)
+        return
+    await state.update_data(fundraising_goal=goal)
+    await database.set_goal(telegram_id=message.from_user.id, goal=goal)
+    await state.set_state(MentorProfile.monobank_jar)
+    await message.answer(MENTOR_JAR_PROMPT)
+
+# Monobank jar
+@router.message(MentorProfile.monobank_jar)
+async def mentor_goal(message: Message, state: FSMContext):
+
+    valid = await monobank_jar_valid(message.text)
+
+    if not valid:
+        await message.answer(
+            INVALID_JAR_URL
+        )
+        return
+    await state.update_data(jar_url=message.text)
+    await state.set_state(MentorProfile.description)
+    await database.set_jar(telegram_id=message.from_user.id, jar_url=message.text)
+    await message.answer(MENTOR_DESCRIPTION_PROMPT)
 
 # Description
-@router.message(MentorProfile.description)
+@router.message(MentorProfile.description, F.text)
 async def mentor_description(message: Message, state: FSMContext):
     await state.update_data(description=message.text)
     await database.set_description(telegram_id=message.from_user.id, description=message.text)
@@ -162,7 +187,24 @@ async def my_participants(message: Message):
 
     text = MY_PARTICIPANTS_HEADER
     for p in participants:
-        text += f"• {p.get('first_name', '')} {p.get('last_name', '')} @{p.get('username', '')} — Instagram: {p.get('instagram', '—')}\n"
+        text += f"• {p.get('first_name', '')} {p.get('last_name', '')} @{p.get('username', '')} — Банка: {p.get('jar_url', '—')}\n"
 
     await message.answer(text)
+
+
+@router.message(Command("profile_view"))
+async def show_my_profile_view(message: Message):
+    telegram_id = message.from_user.id
+
+    # Fetch user by telegram_id
+    user = await database.get_user_by_id(telegram_id)
+
+    # Format profile
+    text = user.get("description", "")
+
+    if user.get("photo_url"):
+        photo = await reupload_as_photo(message.bot, user.get("photo_url"))
+    else:
+        photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    await message.answer_photo(photo=photo, caption=text, parse_mode="HTML")
 

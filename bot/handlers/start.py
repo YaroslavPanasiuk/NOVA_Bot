@@ -47,9 +47,7 @@ async def phone_verification(message: Message, state: FSMContext):
     await message.answer(
         RESTART_PROMPT
     )
-    phone = user.get("phone_number", "Unknown")
-    await database.delete_user(message.from_user.id)
-    await database.add_user(phone=phone, from_user=message.from_user)
+    await database.set_role(message.from_user.id, "pending")
     await message.bot.send_message(
         chat_id=message.from_user.id,
         text=SELECT_ROLE,
@@ -101,7 +99,7 @@ async def show_my_profile(message: Message):
     if not user:
         await message.answer(USER_NOT_REGISTERED)
         return
-    if user.get("role") == "mentor":
+    if user.get("role") == "mentor" and user.get("status") == "approved":
         text  += MENTOR_COMMANDS
     if user.get("role") == "participant":
         text  += PARTICIPANT_COMMANDS

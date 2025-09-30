@@ -21,14 +21,15 @@ async def init_db():
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS bot_users (
             telegram_id BIGINT PRIMARY KEY,
-            first_name TEXT,
-            last_name TEXT,
-            username TEXT,
+            first_name TEXT DEFAULT '',
+            last_name TEXT DEFAULT '',
+            username TEXT DEFAULT '',
             role TEXT CHECK (role IN ('mentor','participant','pending')) NOT NULL,
-            phone_number TEXT,
-            instagram TEXT,
-            fundraising_goal NUMERIC(12,2),
-            photo_url TEXT,
+            phone_number TEXT DEFAULT '',
+            instagram TEXT DEFAULT '',
+            fundraising_goal NUMERIC(12,2) DEFAULT 0,
+            photo_url TEXT DEFAULT '',
+            jar_url TEXT DEFAULT '',
             description TEXT DEFAULT 'no description',
             status TEXT DEFAULT 'pending',
             mentor_id BIGINT REFERENCES bot_users(telegram_id),
@@ -59,7 +60,7 @@ async def set_role(telegram_id: int, role: str):
         await conn.execute("""
         UPDATE bot_users
         SET role=$1
-        WHERE telegram_id=$2 AND role='pending';
+        WHERE telegram_id=$2;
         """, role, telegram_id)
 
 
@@ -71,6 +72,16 @@ async def set_photo(telegram_id: int, file_id: str):
         SET photo_url=$1
         WHERE telegram_id=$2;
         """, file_id, telegram_id)
+
+
+async def set_jar(telegram_id: int, jar_url: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("""
+        UPDATE bot_users
+        SET jar_url=$1
+        WHERE telegram_id=$2;
+        """, jar_url, telegram_id)
 
 
 async def set_description(telegram_id: int, description: str):

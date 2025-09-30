@@ -6,8 +6,9 @@ from bot.db import database
 from bot.utils.formatters import format_profile
 from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb
 import re
+from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
 from bot.utils.files import reupload_as_photo
-from bot.texts import ALREADY_REGISTERED_MENTOR, PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, MANAGE_YOUR_GROUP, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED
+from bot.texts import ALREADY_REGISTERED_MENTOR, PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, MANAGE_YOUR_GROUP, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT
 
 router = Router()
 
@@ -17,6 +18,7 @@ class ParticipantProfile(StatesGroup):
     fundraising_goal = State()
     photo = State()
     confirm_profile = State()
+    monobank_jar = State()
 
 @router.callback_query(F.data == "role:participant")
 async def start_participant(callback: CallbackQuery, state: FSMContext):
@@ -99,7 +101,10 @@ async def participant_instagram(message: Message, state: FSMContext):
     insta = message.text.strip()
     insta = insta.lstrip('@')
 
-    if not re.match(r'^(?!.*\.\.)(?!\.)(?!.*\.$)[A-Za-z0-9._]{5,30}$', insta):
+    valid = await instagram_valid(insta)
+
+    if not valid:
+        print(insta)
         await message.answer(
             INVALID_INSTAGRAM
         )
@@ -113,14 +118,36 @@ async def participant_instagram(message: Message, state: FSMContext):
 # Fundraising goal
 @router.message(ParticipantProfile.fundraising_goal)
 async def participant_goal(message: Message, state: FSMContext):
+    text = message.text.strip().replace(",", ".").lstrip("грн").strip()
+    valid = await fundraising_goal_valid(text)
+    if not valid:
+        await message.answer(INVALID_NUMBER)
+        return
     try:
-        goal = float(message.text)
-        await state.update_data(fundraising_goal=goal)
-        await database.set_goal(telegram_id=message.from_user.id, goal=goal)
-        await state.set_state(ParticipantProfile.photo)
-        await message.answer(PARTICIPANT_PHOTO_PROMPT)
+        goal = float(text)
     except ValueError:
         await message.answer(INVALID_NUMBER)
+        return
+    await state.update_data(fundraising_goal=goal)
+    await database.set_goal(telegram_id=message.from_user.id, goal=goal)
+    await state.set_state(ParticipantProfile.monobank_jar)
+    await message.answer(PARTICIPANT_JAR_PROMPT)
+
+# Monobank jar
+@router.message(ParticipantProfile.monobank_jar)
+async def mentor_goal(message: Message, state: FSMContext):
+
+    valid = await monobank_jar_valid(message.text)
+
+    if not valid:
+        await message.answer(
+            INVALID_JAR_URL
+        )
+        return
+    await state.update_data(jar_url=message.text)
+    await state.set_state(ParticipantProfile.photo)
+    await database.set_jar(telegram_id=message.from_user.id, jar_url=message.text)
+    await message.answer(PARTICIPANT_PHOTO_PROMPT)
 
 # Photo
 @router.message(ParticipantProfile.photo, F.photo)
