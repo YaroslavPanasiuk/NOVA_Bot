@@ -47,7 +47,7 @@ async def add_user(phone: str, from_user):
             last_name = EXCLUDED.last_name,
             username = EXCLUDED.username,
             phone_number = EXCLUDED.phone_number,
-            created_at = NOW();;
+            created_at = NOW();
         """, from_user.id, from_user.first_name, from_user.last_name, from_user.username, phone)
 
 # Set role
