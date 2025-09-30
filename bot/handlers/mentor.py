@@ -3,13 +3,14 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.db import database
-from bot.utils.formatters import format_temp_profile, format_profile
-from bot.keyboards.common import mentor_confirm_profile_kb
+from bot.utils.formatters import format_profile
+from bot.keyboards.common import mentor_confirm_profile_kb, mentor_confirm_profile_view_kb
 from bot.config import ADMINS
 from aiogram import Bot
+from bot.utils.files import reupload_as_photo
 import re
 from aiogram.filters import Command
-from bot.texts import ALREADY_REGISTERED_PARTICIPANT, MENTOR_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, MENTOR_GOAL_PROMPT, MENTOR_PHOTO_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_MENTOR, PROFILE_CANCELLED, MENTOR_NOT_FOUND, NEW_MENTOR_PENDING, MANAGE_PENDING_MENTORS, NO_PARTICIPANTS, MY_PARTICIPANTS_HEADER, CONFIRM_PROFILE
+from bot.texts import ALREADY_REGISTERED_PARTICIPANT, MENTOR_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, MENTOR_GOAL_PROMPT, MENTOR_PHOTO_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_MENTOR, PROFILE_CANCELLED, MENTOR_NOT_FOUND, NEW_MENTOR_PENDING, MANAGE_PENDING_MENTORS, NO_PARTICIPANTS, MY_PARTICIPANTS_HEADER, CONFIRM_PROFILE, MENTOR_DESCRIPTION_PROMPT, PROFILE_CONFIRMED, CONFIRM_PROFILE_VIEW
 
 
 router = Router()
@@ -18,14 +19,13 @@ class MentorProfile(StatesGroup):
     instagram = State()
     fundraising_goal = State()
     photo = State()
-    confirm_profile = State()
+    confirm_profile_info = State()
+    description = State()
+    confirm_profile_view = State()
 
 # Start mentor registration
 @router.callback_query(F.data == "role:mentor")
 async def start_mentor(callback: CallbackQuery, state: FSMContext):
-    user_role = await database.get_user_by_id(callback.from_user.id)
-    if user_role.get("role") == "participant":
-        return await callback.answer(ALREADY_REGISTERED_PARTICIPANT, show_alert=True)
     await state.set_state(MentorProfile.instagram)
     await callback.message.answer(MENTOR_INSTAGRAM_PROMPT)
     await callback.answer()
@@ -54,10 +54,18 @@ async def mentor_goal(message: Message, state: FSMContext):
         goal = float(message.text)
         await state.update_data(fundraising_goal=goal)
         await database.set_goal(telegram_id=message.from_user.id, goal=goal)
-        await state.set_state(MentorProfile.photo)
-        await message.answer(MENTOR_PHOTO_PROMPT)
+        await state.set_state(MentorProfile.description)
+        await message.answer(MENTOR_DESCRIPTION_PROMPT)
     except ValueError:
         await message.answer(INVALID_NUMBER)
+
+# Description
+@router.message(MentorProfile.description)
+async def mentor_description(message: Message, state: FSMContext):
+    await state.update_data(description=message.text)
+    await database.set_description(telegram_id=message.from_user.id, description=message.text)
+    await state.set_state(MentorProfile.photo)
+    await message.answer(MENTOR_PHOTO_PROMPT)
 
 # Photo
 @router.message(MentorProfile.photo, F.photo)
@@ -75,30 +83,50 @@ async def mentor_photo_file(message: Message, state: FSMContext):
     await state.update_data(photo_url=file_id)
     await database.set_photo(telegram_id=message.from_user.id, file_id=file_id)
 
-    data = await state.get_data()
     await database.update_mentor_status(message.from_user.id, "pending")
-    text = await format_temp_profile(message.from_user.id, data)
+    text = await format_profile(message.from_user.id)
     text += CONFIRM_PROFILE
-    await state.set_state(MentorProfile.confirm_profile)
+    await state.set_state(MentorProfile.confirm_profile_info)
     await message.answer_document(document=file_id, caption=text, reply_markup=mentor_confirm_profile_kb(), parse_mode="HTML")
 
 # Confirm mentor profile
-@router.callback_query(F.data.startswith("mentor_confirm_profile:"))
+@router.callback_query(MentorProfile.confirm_profile_info, F.data.startswith("mentor_confirm_profile:"))
+async def mentor_confirm(callback: CallbackQuery, state: FSMContext):
+    confirm_str = callback.data.split(":")[1]
+    if confirm_str == "yes":
+        await state.set_state(MentorProfile.confirm_profile_view)
+        await callback.message.edit_caption(caption=callback.message.caption + "\n\n" + PROFILE_CONFIRMED, reply_markup=None, parse_mode="HTML")
+        user = await database.get_user_by_id(callback.from_user.id)
+        if user.get("photo_url"):
+            photo = await reupload_as_photo(callback.bot, user.get("photo_url"))
+        else:
+            photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+        text = user.get("description", "")
+        await callback.message.answer(CONFIRM_PROFILE_VIEW)
+        await callback.message.answer_photo(photo=photo, caption=text, reply_markup=mentor_confirm_profile_view_kb(), parse_mode="HTML")
+    else:
+        await callback.message.answer(PROFILE_CANCELLED)
+        await state.clear()
+    await callback.answer() 
+
+# Confirm mentor profile
+@router.callback_query(MentorProfile.confirm_profile_view, F.data.startswith("mentor_confirm_profile:"))
 async def mentor_confirm(callback: CallbackQuery, state: FSMContext):
     confirm_str = callback.data.split(":")[1]
     if confirm_str == "yes":
         data = await state.get_data()
+        await state.set_state(MentorProfile.confirm_profile_view)
         await database.save_mentor_profile(
             telegram_id=callback.from_user.id,
             instagram=data["instagram"],
             fundraising_goal=data["fundraising_goal"],
             photo_url=data["photo_url"]
         )
+        await callback.message.edit_reply_markup()
         await callback.message.answer(PROFILE_SAVED_MENTOR)
         await notify_admins(callback.message.bot, callback.from_user.id)
     else:
         await callback.message.answer(PROFILE_CANCELLED)
-    await state.clear()
     await callback.answer() 
 
 

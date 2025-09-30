@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 from bot.handlers.participant import start_participant
 from bot.handlers.mentor import start_mentor
 from bot.utils.formatters import format_profile
-from bot.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, START_PROMPT, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS
+from bot.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, START_PROMPT, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR
 from bot.config import ADMINS
 
 router = Router()
@@ -38,9 +38,18 @@ async def phone_verification(message: Message, state: FSMContext):
 
 @router.message(F.text == "/restart")
 async def phone_verification(message: Message, state: FSMContext):
+    user = await database.get_user_by_id(message.from_user.id)
+    if not user:
+        await message.answer(USER_NOT_REGISTERED)
+        return
+    if user.get("role") == "mentor" and user.get("status") == "approved":
+        return await message.answer(ALREADY_REGISTERED_MENTOR, show_alert=True)
     await message.answer(
         RESTART_PROMPT
     )
+    phone = user.get("phone_number", "Unknown")
+    await database.delete_user(message.from_user.id)
+    await database.add_user(phone=phone, from_user=message.from_user)
     await message.bot.send_message(
         chat_id=message.from_user.id,
         text=SELECT_ROLE,
@@ -53,13 +62,11 @@ async def role_choice(callback: CallbackQuery, state: FSMContext):
     role_str = callback.data.split(":")[1]
 
     if role_str == "mentor":
-        # Start mentor FSM
-        await state.set_state(MentorProfile.instagram)
+        await callback.message.edit_reply_markup()
         await database.set_role(telegram_id=callback.from_user.id, role="mentor")
         await start_mentor(callback, state)
     elif role_str == "participant":
-        # Start participant FSM
-        # We'll fetch mentors in the participant FSM handler  # import handler
+        await callback.message.edit_reply_markup()
         await database.set_role(telegram_id=callback.from_user.id, role="participant")
         await start_participant(callback, state)
     else:
@@ -91,9 +98,6 @@ async def show_my_profile(message: Message):
 async def show_my_profile(message: Message):
     text = MENU_PROMPT
     user = await database.get_user_by_id(message.from_user.id)
-    print(user)
-    print(user.get("role"))
-    print(str(user.get("telegram_id")))
     if not user:
         await message.answer(USER_NOT_REGISTERED)
         return

@@ -29,6 +29,7 @@ async def init_db():
             instagram TEXT,
             fundraising_goal NUMERIC(12,2),
             photo_url TEXT,
+            description TEXT,
             status TEXT DEFAULT 'pending',
             mentor_id BIGINT REFERENCES bot_users(telegram_id),
             created_at TIMESTAMP DEFAULT NOW()
@@ -47,6 +48,7 @@ async def add_user(phone: str, from_user):
             last_name = EXCLUDED.last_name,
             username = EXCLUDED.username,
             phone_number = EXCLUDED.phone_number,
+            role = 'pending',
             created_at = NOW();
         """, from_user.id, from_user.first_name, from_user.last_name, from_user.username, phone)
 
@@ -69,6 +71,16 @@ async def set_photo(telegram_id: int, file_id: str):
         SET photo_url=$1
         WHERE telegram_id=$2;
         """, file_id, telegram_id)
+
+
+async def set_description(telegram_id: int, description: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("""
+        UPDATE bot_users
+        SET description=$1
+        WHERE telegram_id=$2;
+        """, description, telegram_id)
 
 
 async def set_instagram(telegram_id: int, instagram: str):
