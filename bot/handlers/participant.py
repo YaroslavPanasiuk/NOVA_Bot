@@ -199,7 +199,8 @@ async def participant_confirm(callback: CallbackQuery, state: FSMContext):
 @router.message(F.text.startswith("/mentor"))
 async def remove_user_cmd(message: Message):
 
-    mentor_id = await database.get_user_by_id(message.from_user.id).get("mentor_id")
+    user = await database.get_user_by_id(message.from_user.id)
+    mentor_id = user.get('mentor_id')
     text = await format_profile(mentor_id)
     mentor = await database.get_user_by_id(mentor_id)
 
