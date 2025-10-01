@@ -1,11 +1,12 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile
+from asyncpg.exceptions import ForeignKeyViolationError
 from bot.db import database
 from bot.config import ADMINS
 from aiogram.filters import Command
 from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb
 from bot.utils.formatters import format_profile
-from bot.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE
+from bot.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION
 
 router = Router()
 
@@ -146,10 +147,13 @@ async def remove_user_cmd(message: Message):
         return
 
     user_id = int(parts[1]) 
-
-    await database.delete_user(user_id)
-
-    await message.answer(USER_REMOVED)
+    try:
+        await database.delete_user(user_id)
+        await message.answer(USER_REMOVED)
+    except ForeignKeyViolationError:
+        await message.answer(MENTOR_HAS_TEAM_EXCEPTION, show_alert=True)
+    except Exception:
+        await message.answer(REMOVE_USER_EXCEPTION, show_alert=True)
 
 
 @router.message(F.text.startswith("/user_profile"))

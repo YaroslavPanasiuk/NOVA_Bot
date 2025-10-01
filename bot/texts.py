@@ -89,6 +89,8 @@ MENTOR_REJECTED = """❌ Ментора відхилено та вилучено
 REMOVE_USER_USAGE = """⚠️ Використання: /remove_user <user_id>"""
 USER_PROFILE_USAGE = """⚠️ Використання: /user_profile <user_id>"""
 USER_REMOVED = """✅ Користувача видалено з бази даних."""
+MENTOR_HAS_TEAM_EXCEPTION = """❌ Не можна видалити ментора, який має еоманду"""
+REMOVE_USER_EXCEPTION = """❌ Не вдалося видалити користувача"""
 
 USER_NOT_FOUND = """❌ Користувача не знайдено."""
 MENTOR_NOT_FOUND = """❌ Ментор не знайдений."""
