@@ -23,7 +23,8 @@ async def format_profile(user_id: int) -> str:
 
     if user.get('role') == "participant":
         mentor = await database.get_user_by_id(user.get('mentor_id'))
-        base_info += f"{PROFILE_MENTOR}{mentor.get('first_name', '')} {mentor.get('last_name', '')} @{mentor.get('username', '')}\n"
+        if mentor:
+            base_info += f"{PROFILE_MENTOR}{mentor.get('first_name', '')} {mentor.get('last_name', '')} @{mentor.get('username', '')}\n"
 
     return base_info
 
