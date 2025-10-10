@@ -11,7 +11,7 @@ from bot.handlers.participant import start_participant
 from bot.handlers.mentor import start_mentor
 from bot.utils.formatters import format_profile
 from bot.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT
-from bot.config import ADMINS, TECH_SUPPORT_ID
+from bot.config import ADMINS, TECH_SUPPORT_ID, START_VIDEO_URL
 
 router = Router()
 
@@ -22,7 +22,7 @@ class GeneralStates(StatesGroup):
 @router.message(Command("start"))
 async def start_cmd(message: Message):
     await message.answer_animation(
-        animation="BAACAgIAAxkBAAILo2jo7CiJRV_moFqYSZxC4cohGCMeAAK1hQACp2BIS5PYYG_r5HnhNgQ",
+        animation=START_VIDEO_URL,
         caption=WELCOME,
         reply_markup=start_kb(), 
         parse_mode="HTML"
