@@ -1,5 +1,5 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from bot.texts import PHONE_SHARE_BUTTON, ROLE_MENTOR_BUTTON, ROLE_PARTICIPANT_BUTTON, CONFIRM_YES, CONFIRM_NO, CAROUSEL_LEFT, CAROUSEL_RIGHT, CAROUSEL_SELECT, APPROVE, REJECT
+from bot.texts import PHONE_SHARE_BUTTON, ROLE_MENTOR_BUTTON, ROLE_PARTICIPANT_BUTTON, CONFIRM_YES, CONFIRM_NO, CAROUSEL_LEFT, CAROUSEL_RIGHT, CAROUSEL_SELECT, APPROVE, REJECT, START_BUTTON
 
 def phone_request_kb():
     return ReplyKeyboardMarkup(
@@ -54,4 +54,24 @@ def mentor_carousel_kb(index: int, total: int, mentor_id: int) -> InlineKeyboard
             InlineKeyboardButton(text=f"{CAROUSEL_SELECT}", callback_data=f"mentor_select:{mentor_id}")
         ]
     ])
+    return keyboard
+
+def start_kb() -> InlineKeyboardMarkup:
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=START_BUTTON, callback_data=f"start_button")
+        ]
+    ])
+    return keyboard
+
+
+def confirm_data_processing_kb() -> InlineKeyboardMarkup:
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[
+            InlineKeyboardButton(text=CONFIRM_YES, callback_data="confirm_data_processing:yes"),
+            InlineKeyboardButton(text=CONFIRM_NO, callback_data="confirm_data_processing:no")
+        ]]
+    )
     return keyboard

@@ -1,5 +1,6 @@
 from bot.db import database
-from bot.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR
+from aiogram.exceptions import AiogramError
+from bot.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR, REGISTERED_USERS_HEADER
 
 async def format_profile(user_id: int) -> str:
     user = await database.get_user_by_id(user_id)
@@ -36,3 +37,33 @@ def format_amount(value: float) -> str:
         return f"{value:,.2f} грн".replace(",", " ")
     except (ValueError, TypeError):
         return value
+
+
+async def format_user_list() -> str:
+    users = await database.get_all_users()
+
+    if not users:
+        return None
+
+    # Format output
+    text_lines = [REGISTERED_USERS_HEADER]
+    for u in users:
+        if u['role'] == "mentor":
+            role_str = f" | Status: {u['status']}"
+        elif u['role'] == "participant":
+            role_str = f" | Mentor: {u['mentor_id']}"
+        else:
+            role_str = ""
+        if role_str == None:
+            role_str = ""
+        try:
+            username_str = f"@{u['username']}"
+        except Exception:
+            print("exception")
+            username_str = "no_username"
+        text_lines.append(
+            f"ID: {u['telegram_id']} | Name: {u['first_name']} {u['last_name']} | Username: {username_str} | Phone: {u['phone_number']} | Role: {u['role']}{role_str} | Registaerd at: {u['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
+        )
+
+    text = "\n".join(text_lines)
+    return text

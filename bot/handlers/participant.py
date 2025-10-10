@@ -4,11 +4,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.db import database
 from bot.utils.formatters import format_profile
-from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb
+from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb, confirm_data_processing_kb
 import re
 from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
 from bot.utils.files import reupload_as_photo
-from bot.texts import ALREADY_REGISTERED_MENTOR, PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, MANAGE_YOUR_GROUP, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT
+from bot.texts import ALREADY_REGISTERED_MENTOR, PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, MANAGE_YOUR_GROUP, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT, CONFIRM_DATA_PROCESSING, PARTICIPANT_REGISTRATION_END
 
 router = Router()
 
@@ -19,6 +19,8 @@ class ParticipantProfile(StatesGroup):
     photo = State()
     confirm_profile = State()
     monobank_jar = State()
+    confirm_data_processing = State()
+
 
 @router.callback_query(F.data == "role:participant")
 async def start_participant(callback: CallbackQuery, state: FSMContext):
@@ -119,7 +121,7 @@ async def participant_instagram(message: Message, state: FSMContext):
 @router.message(ParticipantProfile.fundraising_goal)
 async def participant_goal(message: Message, state: FSMContext):
     text = message.text.strip().replace(",", ".").lstrip("грн").strip()
-    valid = await fundraising_goal_valid(text)
+    valid = await fundraising_goal_valid(text, 1000)
     if not valid:
         await message.answer(INVALID_NUMBER)
         return
@@ -176,8 +178,20 @@ async def participant_photo_file(message: Message, state: FSMContext):
 async def participant_confirm(callback: CallbackQuery, state: FSMContext):
     confirm_str = callback.data.split(":")[1]
     if confirm_str == "yes":
-        data = await state.get_data()
         await callback.message.edit_caption(caption=callback.message.caption + "\n\n" + PROFILE_CONFIRMED, reply_markup=None, parse_mode="HTML")
+
+        await callback.message.answer(CONFIRM_DATA_PROCESSING, reply_markup=confirm_data_processing_kb())
+    else:
+        await callback.message.answer(PROFILE_CANCELLED)
+    await state.set_state(ParticipantProfile.confirm_data_processing)
+
+# Confirm data processing
+@router.callback_query(ParticipantProfile.confirm_data_processing, F.data.startswith("confirm_data_processing:"))
+async def participant_confirm(callback: CallbackQuery, state: FSMContext):
+    confirm_str = callback.data.split(":")[1]
+    if confirm_str == "yes":
+        data = await state.get_data()
+        await callback.message.edit_text(text=callback.message.text + "\n\n" + PROFILE_CONFIRMED, reply_markup=None, parse_mode="HTML")
         await database.save_participant_profile(
             telegram_id=callback.from_user.id,
             mentor_id=data["mentor_id"],
@@ -186,6 +200,7 @@ async def participant_confirm(callback: CallbackQuery, state: FSMContext):
             photo_url=data["photo_url"]
         )
         await callback.message.answer(PROFILE_SAVED_PARTICIPANT)
+        await callback.message.answer(PARTICIPANT_REGISTRATION_END)
         await callback.bot.send_message(data["mentor_id"], NEW_PARTICIPANT_JOINED)
         text = await format_profile(callback.from_user.id)
         await callback.bot.send_document(data["mentor_id"], document=data["photo_url"], caption=text, parse_mode="HTML")
@@ -198,7 +213,6 @@ async def participant_confirm(callback: CallbackQuery, state: FSMContext):
 
 @router.message(F.text.startswith("/mentor"))
 async def remove_user_cmd(message: Message):
-
     user = await database.get_user_by_id(message.from_user.id)
     mentor_id = user.get('mentor_id')
     text = await format_profile(mentor_id)

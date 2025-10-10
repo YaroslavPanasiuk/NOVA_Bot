@@ -5,7 +5,7 @@ from bot.db import database
 from bot.config import ADMINS
 from aiogram.filters import Command
 from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb
-from bot.utils.formatters import format_profile
+from bot.utils.formatters import format_profile, format_user_list
 from bot.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION
 
 router = Router()
@@ -18,33 +18,16 @@ async def list_users_cmd(message: Message):
         return
 
     # Fetch users from DB
-    users = await database.get_all_users()
+    text = await format_user_list()
 
-    if not users:
+    if not text:
         await message.answer(NO_USERS_FOUND)
         return
-
-    # Format output
-    text_lines = [REGISTERED_USERS_HEADER]
-    for u in users:
-        if u['role'] == "mentor":
-            role_str = f" | Status: {u['status']}"
-        elif u['role'] == "participant":
-            role_str = f" | Mentor: {u['mentor_id']}"
-        else:
-            role_str = ""
-        if role_str == None:
-            role_str = ""
-        text_lines.append(
-            f"ID: {u['telegram_id']} | Name: {u['first_name']} {u['last_name']} | Username: @{u['username']} | Phone: {u['phone_number']} | Role: {u['role']}{role_str} | Registaerd at: {u['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
-        )
-
-    text = "\n".join(text_lines)
 
     # Split long messages into chunks
     MAX_LEN = 4000
     for i in range(0, len(text), MAX_LEN):
-        await message.answer(text[i:i+MAX_LEN], parse_mode="Markdown")
+        await message.answer(text[i:i+MAX_LEN])
 
 
 @router.message(Command("pending_mentors"))
@@ -89,7 +72,7 @@ async def list_pending_mentors(message: Message):
     # Split long messages into chunks
     MAX_LEN = 4000
     for i in range(0, len(text), MAX_LEN):
-        await message.answer(text[i:i+MAX_LEN], parse_mode="Markdown")
+        await message.answer(text[i:i+MAX_LEN])
 
 
 @router.callback_query(F.data.startswith("mentor:"))
@@ -157,7 +140,7 @@ async def remove_user_cmd(message: Message):
 
 
 @router.message(F.text.startswith("/user_profile"))
-async def remove_user_cmd(message: Message):
+async def user_profile_cmd(message: Message):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return

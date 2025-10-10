@@ -25,6 +25,7 @@ class MentorProfile(StatesGroup):
     confirm_profile_view = State()
     monobank_jar = State()
 
+
 # Start mentor registration
 @router.callback_query(F.data == "role:mentor")
 async def start_mentor(callback: CallbackQuery, state: FSMContext):
@@ -54,7 +55,7 @@ async def mentor_instagram(message: Message, state: FSMContext):
 @router.message(MentorProfile.fundraising_goal)
 async def mentor_goal(message: Message, state: FSMContext):
     text = message.text.strip().replace(",", ".").lstrip("грн").strip()
-    valid = await fundraising_goal_valid(text)
+    valid = await fundraising_goal_valid(text, 50000)
     if not valid:
         await message.answer(INVALID_NUMBER)
         return

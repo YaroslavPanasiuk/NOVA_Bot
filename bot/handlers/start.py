@@ -1,7 +1,8 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, FSInputFile, ReplyKeyboardRemove
 from aiogram.filters import Command
-from bot.keyboards.common import phone_request_kb, role_choice_kb
+from aiogram.fsm.state import State, StatesGroup
+from bot.keyboards.common import start_kb, role_choice_kb, phone_request_kb
 from bot.db import database
 from bot.handlers.mentor import MentorProfile, router as mentor_router
 from bot.handlers.participant import ParticipantProfile, router as participant_router
@@ -9,27 +10,40 @@ from aiogram.fsm.context import FSMContext
 from bot.handlers.participant import start_participant
 from bot.handlers.mentor import start_mentor
 from bot.utils.formatters import format_profile
-from bot.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, START_PROMPT, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR
-from bot.config import ADMINS
+from bot.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT
+from bot.config import ADMINS, TECH_SUPPORT_ID
 
 router = Router()
 
+class GeneralStates(StatesGroup):
+    help = State()
+
+
 @router.message(Command("start"))
 async def start_cmd(message: Message):
-    await message.answer(
-        WELCOME,
+    await message.answer_animation(
+        animation="BAACAgIAAxkBAAILo2jo7CiJRV_moFqYSZxC4cohGCMeAAK1hQACp2BIS5PYYG_r5HnhNgQ",
+        caption=WELCOME,
+        reply_markup=start_kb(), 
+        parse_mode="HTML"
+    )
+
+@router.callback_query(F.data == "start_button")
+async def share_contact(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup()
+    await callback.message.answer(
+        SHARE_PHONE,
         reply_markup=phone_request_kb()
     )
 
 @router.message(F.contact)
 async def phone_verification(message: Message, state: FSMContext):
     phone = message.contact.phone_number
+    temp_msg = await message.answer("...", reply_markup=ReplyKeyboardRemove())
+    await temp_msg.delete()
     # Add Telegram ID to DB without role yet
     await database.add_user(phone=phone, from_user=message.from_user)
     
-    await message.answer(
-        START_PROMPT
-    )
     await message.bot.send_message(
         chat_id=message.from_user.id,
         text=SELECT_ROLE,
@@ -93,7 +107,7 @@ async def show_my_profile(message: Message):
 
 
 @router.message(F.text == "/menu")
-async def show_my_profile(message: Message):
+async def show_menu(message: Message):
     text = MENU_PROMPT
     user = await database.get_user_by_id(message.from_user.id)
     if not user:
@@ -105,5 +119,26 @@ async def show_my_profile(message: Message):
         text  += PARTICIPANT_COMMANDS
     if str(user.get("telegram_id")) in ADMINS:
         text  += ADMIN_COMMANDS
-    print(text)
     await message.answer(text)
+
+
+@router.message(F.text == "/help")
+async def show_help(message: Message, state: FSMContext):
+    user = await database.get_user_by_id(message.from_user.id)
+    if not user:
+        await message.answer(USER_NOT_REGISTERED)
+        return
+    await message.answer(HELP_PROMPT)
+    await state.set_state(GeneralStates.help)
+
+@router.message(GeneralStates.help)
+async def send_help_message(message: Message, state: FSMContext):
+    await state.clear()
+    user = await database.get_user_by_id(message.from_user.id)
+    if not user:
+        await message.answer(USER_NOT_REGISTERED)
+        return
+    await message.bot.send_message(TECH_SUPPORT_ID, text=f"{user['first_name']} {user['last_name']} (@{user['username']}) Має питання:")
+    await message.forward(chat_id=TECH_SUPPORT_ID)
+    await message.answer(HELP_REQUESTED_PROMPT)
+
