@@ -36,6 +36,15 @@ async def init_db():
             created_at TIMESTAMP DEFAULT NOW()
         );
         """)
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_questions (
+            id SERIAL PRIMARY KEY,         -- unique ID for each question
+            telegram_id BIGINT REFERENCES bot_users(telegram_id) ON DELETE CASCADE,
+            question_text TEXT NOT NULL DEFAULT '',
+            status TEXT DEFAULT 'not answered',
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        """)
 
 # Add user after phone verification
 async def add_user(phone: str, from_user):
@@ -244,4 +253,39 @@ async def get_participants_of_mentor(mentor_id: int):
             ORDER BY created_at
         """, mentor_id)
         return [dict(r) for r in rows]
+    
 
+async def add_question(telegram_id: int, question_text: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("""
+            INSERT INTO user_questions (telegram_id, question_text)
+            VALUES ($1, $2);
+        """, telegram_id, question_text)
+
+
+async def get_questions():
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        rows = await conn.fetch("""
+            SELECT * FROM user_questions
+            ORDER BY created_at DESC;
+        """)
+        return [dict(r) for r in rows]
+
+
+async def get_question_by_id(id:int):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT * FROM user_questions WHERE id=$1", id)
+        return dict(row) if row else None
+    
+
+async def set_question_status(id: int, status: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("""
+        UPDATE user_questions
+        SET status=$1
+        WHERE id=$2;
+        """, status, id)

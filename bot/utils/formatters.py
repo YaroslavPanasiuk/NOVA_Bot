@@ -1,6 +1,6 @@
 from bot.db import database
 from aiogram.exceptions import AiogramError
-from bot.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR, REGISTERED_USERS_HEADER
+from bot.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR, REGISTERED_USERS_HEADER, QUESTION_LIST_HEADER, SUGGEST_ANSWER_COMMAND
 
 async def format_profile(user_id: int) -> str:
     user = await database.get_user_by_id(user_id)
@@ -66,4 +66,23 @@ async def format_user_list() -> str:
         )
 
     text = "\n".join(text_lines)
+    return text
+
+
+async def format_question_list() -> str:
+    questions = await database.get_questions()
+    if not questions:
+        return None
+
+    text_lines = [QUESTION_LIST_HEADER]
+    for q in questions:
+        user = await database.get_user_by_id(q['telegram_id'])
+        if not user:
+            continue
+        text_lines.append(
+            f"{q['id']}) Запитує: {user['first_name']} {user['last_name']} @{user['username']} | Статус: {q['status']} | Text: {q['question_text']} | Запитання надіслано: {q['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
+        )
+
+    text = "\n".join(text_lines)
+    text += f"\n{SUGGEST_ANSWER_COMMAND}"
     return text

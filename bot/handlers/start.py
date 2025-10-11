@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from bot.handlers.participant import start_participant
 from bot.handlers.mentor import start_mentor
 from bot.utils.formatters import format_profile
-from bot.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT
+from bot.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT, TECH_SUPPORT_COMMANDS, SUGGEST_ANSWER_COMMAND, CANCELED
 from bot.config import ADMINS, TECH_SUPPORT_ID, START_VIDEO_URL
 
 router = Router()
@@ -27,6 +27,11 @@ async def start_cmd(message: Message):
         reply_markup=start_kb(), 
         parse_mode="HTML"
     )
+
+@router.message(Command("cancel"))
+async def cancel(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer(CANCELED)
 
 @router.callback_query(F.data == "start_button")
 async def share_contact(callback: CallbackQuery, state: FSMContext):
@@ -119,6 +124,8 @@ async def show_menu(message: Message):
         text  += PARTICIPANT_COMMANDS
     if str(user.get("telegram_id")) in ADMINS:
         text  += ADMIN_COMMANDS
+    if str(user.get("telegram_id")) == TECH_SUPPORT_ID:
+        text  += TECH_SUPPORT_COMMANDS
     await message.answer(text)
 
 
@@ -138,7 +145,9 @@ async def send_help_message(message: Message, state: FSMContext):
     if not user:
         await message.answer(USER_NOT_REGISTERED)
         return
+    await database.add_question(user['telegram_id'], message.text)
     await message.bot.send_message(TECH_SUPPORT_ID, text=f"{user['first_name']} {user['last_name']} (@{user['username']}) Має питання:")
     await message.forward(chat_id=TECH_SUPPORT_ID)
+    await message.bot.send_message(TECH_SUPPORT_ID, text=SUGGEST_ANSWER_COMMAND)
     await message.answer(HELP_REQUESTED_PROMPT)
 

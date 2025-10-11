@@ -75,3 +75,16 @@ def confirm_data_processing_kb() -> InlineKeyboardMarkup:
         ]]
     )
     return keyboard
+
+
+def questions_kb(questions) -> InlineKeyboardMarkup:
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text=f"{q['id']}): {q['question_text'][:40]}",
+                callback_data=f"answer_question:{q['id']}"
+            )] for q in questions
+        ]
+    )
+    return keyboard

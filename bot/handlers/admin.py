@@ -10,6 +10,9 @@ from bot.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PEN
 
 router = Router()
 
+class AdminProfile(StatesGroup):
+    waiting_for_design = State()
+
 @router.message(F.text == "/list_users")
 async def list_users_cmd(message: Message):
     # Check if user is admin
@@ -159,3 +162,4 @@ async def user_profile_cmd(message: Message):
     else:
         document = FSInputFile("resources/default.png", filename="no-profile-picture.png")
     await message.answer_document(document=document, caption=text, parse_mode="HTML")
+
