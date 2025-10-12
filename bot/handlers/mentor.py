@@ -11,27 +11,40 @@ from bot.utils.files import reupload_as_photo
 from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
 import re
 from aiogram.filters import Command
-from bot.utils.texts import ALREADY_REGISTERED_PARTICIPANT, MENTOR_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, MENTOR_GOAL_PROMPT, MENTOR_PHOTO_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_MENTOR, PROFILE_CANCELLED, MENTOR_NOT_FOUND, NEW_MENTOR_PENDING, MANAGE_PENDING_MENTORS, NO_PARTICIPANTS, MY_PARTICIPANTS_HEADER, CONFIRM_PROFILE, MENTOR_DESCRIPTION_PROMPT, PROFILE_CONFIRMED, CONFIRM_PROFILE_VIEW, INVALID_JAR_URL, MENTOR_JAR_PROMPT
+from bot.utils.texts import ALREADY_REGISTERED_PARTICIPANT, MENTOR_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, MENTOR_GOAL_PROMPT, MENTOR_PHOTO_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_MENTOR, PROFILE_CANCELLED, MENTOR_NOT_FOUND, NEW_MENTOR_PENDING, MANAGE_PENDING_MENTORS, NO_PARTICIPANTS, MY_PARTICIPANTS_HEADER, CONFIRM_PROFILE, MENTOR_DESCRIPTION_PROMPT, PROFILE_CONFIRMED, CONFIRM_PROFILE_VIEW, INVALID_JAR_URL, MENTOR_JAR_PROMPT, TEAM_BUTTON, PROFILE_VIEW_BUTTON, CHANGE_DESCRIPTION_BUTTON, CHANGE_DESCRIPTION_MSG, NEW_DESCRIPTION_SET, CHANGE_GOAL_BUTTON, NEW_GOAL_SET, CHANGE_INSTAGRAM_BUTTON, NEW_INSTAGRAM_SET, CHANGE_MONOBANK_BUTTON, NEW_MONOBANK_SET, CHANGE_GOAL_MSG, CHANGE_INSTAGRAM_MSG, CHANGE_MONOBANK_MSG, MENTOR_NAME_PROMPT
 
 
 router = Router()
 
 class MentorProfile(StatesGroup):
     instagram = State()
+    name = State()
     fundraising_goal = State()
     photo = State()
     confirm_profile_info = State()
     description = State()
     confirm_profile_view = State()
     monobank_jar = State()
+    change_description = State()
+    change_goal = State()
+    change_monobank = State()
+    change_instagram = State()
 
 
 # Start mentor registration
 @router.callback_query(F.data == "role:mentor")
 async def start_mentor(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(MentorProfile.instagram)
-    await callback.message.answer(MENTOR_INSTAGRAM_PROMPT)
+    await state.set_state(MentorProfile.name)
+    await callback.message.answer(MENTOR_NAME_PROMPT)
     await callback.answer()
+
+# Name input
+@router.message(MentorProfile.name, F.text)
+async def mentor_instagram(message: Message, state: FSMContext):
+    await state.update_data(name=message.text, role="mentor")
+    await state.set_state(MentorProfile.instagram)
+    await database.set_default_name(telegram_id=message.from_user.id, name=message.text)
+    await message.answer(MENTOR_INSTAGRAM_PROMPT)
 
 # Instagram input
 @router.message(MentorProfile.instagram)
@@ -46,7 +59,7 @@ async def mentor_instagram(message: Message, state: FSMContext):
             INVALID_INSTAGRAM
         )
         return
-    await state.update_data(instagram=insta, role="mentor")
+    await state.update_data(instagram=insta)
     await state.set_state(MentorProfile.fundraising_goal)
     await database.set_instagram(telegram_id=message.from_user.id, instagram=insta)
     await message.answer(MENTOR_GOAL_PROMPT)
@@ -177,7 +190,7 @@ async def notify_admins(bot: Bot, mentor_id: int):
             print(f"Failed to notify admin {admin_id}: {e}")
 
 
-@router.message(Command("team"))
+@router.message((F.text == "/team" ) | ( F.text == TEAM_BUTTON))
 async def my_participants(message: Message):
     mentor_id = message.from_user.id
     participants = await database.get_participants_of_mentor(mentor_id)
@@ -193,7 +206,7 @@ async def my_participants(message: Message):
     await message.answer(text)
 
 
-@router.message(Command("profile_view"))
+@router.message((F.text == "/profile_view" ) | ( F.text == PROFILE_VIEW_BUTTON))
 async def show_my_profile_view(message: Message):
     telegram_id = message.from_user.id
 
@@ -209,3 +222,85 @@ async def show_my_profile_view(message: Message):
         photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
     await message.answer_photo(photo=photo, caption=text, parse_mode="HTML")
 
+
+@router.message((F.text == "/change_description" ) | ( F.text == CHANGE_DESCRIPTION_BUTTON))
+async def change_description(message: Message, state: FSMContext):
+    user = await database.get_user_by_id(message.from_user.id)
+    await message.answer(CHANGE_DESCRIPTION_MSG.format(current_description=user['description']))
+    await state.set_state(MentorProfile.change_description)
+
+
+@router.message(MentorProfile.change_description, F.text)
+async def set_description(message: Message, state: FSMContext):
+    await database.set_description(telegram_id=message.from_user.id, description=message.text)
+    await state.clear()
+    await message.answer(NEW_DESCRIPTION_SET)
+
+
+@router.message((F.text == "/change_goal" ) | ( F.text == CHANGE_GOAL_BUTTON))
+async def change_goal(message: Message, state: FSMContext):
+    user = await database.get_user_by_id(message.from_user.id)
+    await message.answer(CHANGE_GOAL_MSG.format(current_goal=user['fundraising_goal']))
+    await state.set_state(MentorProfile.change_goal)
+
+
+@router.message(MentorProfile.change_goal, F.text)
+async def set_goal(message: Message, state: FSMContext):
+    text = message.text.strip().replace(",", ".").lstrip("грн").strip()
+    valid = await fundraising_goal_valid(text, 50000)
+    if not valid:
+        await message.answer(INVALID_NUMBER)
+        return
+    try:
+        goal = float(text)
+    except ValueError:
+        await message.answer(INVALID_NUMBER)
+        return
+    await database.set_goal(telegram_id=message.from_user.id, goal=goal)
+    await state.clear()
+    await message.answer(NEW_GOAL_SET)
+
+
+@router.message((F.text == "/change_monobank" ) | ( F.text == CHANGE_MONOBANK_BUTTON))
+async def change_monobank(message: Message, state: FSMContext):
+    user = await database.get_user_by_id(message.from_user.id)
+    await message.answer(CHANGE_MONOBANK_MSG.format(current_monobank=user['jar_url']))
+    await state.set_state(MentorProfile.change_monobank)
+
+
+@router.message(MentorProfile.change_monobank, F.text)
+async def set_monobank(message: Message, state: FSMContext):
+    valid = await monobank_jar_valid(message.text)
+
+    if not valid:
+        await message.answer(
+            INVALID_JAR_URL
+        )
+        return
+    await database.set_jar(telegram_id=message.from_user.id, jar_url=message.text)
+    await state.clear()
+    await message.answer(NEW_MONOBANK_SET)
+
+
+@router.message((F.text == "/change_instagram" ) | ( F.text == CHANGE_INSTAGRAM_BUTTON))
+async def change_instagram(message: Message, state: FSMContext):
+    user = await database.get_user_by_id(message.from_user.id)
+    await message.answer(CHANGE_INSTAGRAM_MSG.format(current_instagram=user['instagram']))
+    await state.set_state(MentorProfile.change_instagram)
+
+
+@router.message(MentorProfile.change_instagram, F.text)
+async def set_instagram(message: Message, state: FSMContext):
+    insta = message.text.strip()
+    insta = insta.lstrip('@')
+
+    valid = await instagram_valid(insta)
+
+    if not valid:
+        await message.answer(
+            INVALID_INSTAGRAM
+        )
+        return
+    await database.set_instagram(telegram_id=message.from_user.id, instagram=message.text)
+    await state.clear()
+    await message.answer(NEW_INSTAGRAM_SET)

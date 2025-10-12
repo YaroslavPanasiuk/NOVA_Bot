@@ -8,14 +8,14 @@ from bot.config import ADMINS
 from aiogram.filters import Command
 from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb
 from bot.utils.formatters import format_profile, format_user_list, format_design_msg
-from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS
+from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED
 
 router = Router()
 
 class AdminProfile(StatesGroup):
     waiting_for_design = State()
 
-@router.message(F.text == "/list_users")
+@router.message((F.text == "/list_users" ) | ( F.text == LIST_USERS_BUTTON))
 async def list_users_cmd(message: Message):
     # Check if user is admin
     if str(message.from_user.id) not in ADMINS:
@@ -35,7 +35,7 @@ async def list_users_cmd(message: Message):
         await message.answer(text[i:i+MAX_LEN])
 
 
-@router.message(Command("pending_mentors"))
+@router.message((F.text == "/pending_mentors" ) | ( F.text == PENDING_MENTORS_BUTTON))
 async def list_pending_mentors(message: Message):
     if str(message.from_user.id) not in ADMINS:
         return await message.answer(NOT_ADMIN)
@@ -51,7 +51,7 @@ async def list_pending_mentors(message: Message):
     )
 
 
-@router.message(Command("list_mentors"))
+@router.message((F.text == "/list_mentors" ) | ( F.text == LIST_MENTORS_BUTTON))
 async def list_pending_mentors(message: Message):
     # Check if user is admin
     if str(message.from_user.id) not in ADMINS:
@@ -109,7 +109,9 @@ async def approve_mentor(callback: CallbackQuery):
     mentor_id = int(callback.data.split(":")[1])
     await database.update_mentor_status(mentor_id, "approved")
     await callback.message.edit_text(MENTOR_APPROVED)
+    await callback.bot.send_message(chat_id=mentor_id, text=YOU_HAVE_BEEN_APPROVED)
     await callback.answer("Approved ✅")
+
 
 
 @router.callback_query(F.data.startswith("mentor_reject:"))
@@ -123,36 +125,58 @@ async def reject_mentor(callback: CallbackQuery):
     await callback.answer("Rejected ❌")
 
 
-@router.message(F.text.startswith("/remove_user"))
+@router.message((F.text.startswith("/remove_user") ) | ( F.text == REMOVE_USER_BUTTON))
 async def remove_user_cmd(message: Message):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
+    
+    users = await database.get_all_users()
+    kb = select_user_kb(users, "delete_user")
+    await message.answer(SELECT_USER, reply_markup=kb)
 
-    parts = message.text.strip().split()
+
+@router.callback_query(F.data.startswith("delete_user:"))
+async def remove_user_reply_cmd(callback: CallbackQuery):
+    if str(callback.from_user.id) not in ADMINS:
+        await callback.answer(NOT_ADMIN)
+        return
+
+    parts = callback.data.split(":")
     if len(parts) != 2 or not parts[1].isdigit():
-        await message.answer(REMOVE_USER_USAGE)
+        await callback.answer(REMOVE_USER_USAGE)
         return
 
     user_id = int(parts[1]) 
     try:
         await database.delete_user(user_id)
-        await message.answer(USER_REMOVED)
+        await callback.answer(USER_REMOVED)
     except ForeignKeyViolationError:
-        await message.answer(MENTOR_HAS_TEAM_EXCEPTION, show_alert=True)
+        await callback.answer(MENTOR_HAS_TEAM_EXCEPTION, show_alert=True)
     except Exception:
-        await message.answer(REMOVE_USER_EXCEPTION, show_alert=True)
+        await callback.answer(REMOVE_USER_EXCEPTION, show_alert=True)
 
 
-@router.message(F.text.startswith("/user_profile"))
+@router.message((F.text.startswith("/user_profile") ) | ( F.text == USER_PROFILE_BUTTON))
 async def user_profile_cmd(message: Message):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
+    
+    users = await database.get_all_users()
+    kb = select_user_kb(users, "user_profile")
+    await message.answer(SELECT_USER, reply_markup=kb)
 
-    parts = message.text.strip().split()
+
+@router.callback_query(F.data.startswith("user_profile:"))
+async def user_profile_reply_cmd(callback: CallbackQuery):
+    if str(callback.from_user.id) not in ADMINS:
+        await callback.answer(NOT_ADMIN)
+        return
+
+    parts = callback.data.split(":")
     if len(parts) != 2 or not parts[1].isdigit():
-        await message.answer(USER_PROFILE_USAGE)
+        await callback.answer(USER_PROFILE_USAGE)
         return
 
     user_id = int(parts[1]) 
@@ -163,10 +187,11 @@ async def user_profile_cmd(message: Message):
         document = user["photo_url"]
     else:
         document = FSInputFile("resources/default.png", filename="no-profile-picture.png")
-    await message.answer_document(document=document, caption=text, parse_mode="HTML")
+    await callback.message.answer_document(document=document, caption=text, parse_mode="HTML")
+    await callback.answer()
 
 
-@router.message(F.text == "/send_design")
+@router.message((F.text == "/send_design" ) | ( F.text == SEND_DESIGN_BUTTON))
 async def answer_cmd(message: Message):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
@@ -179,9 +204,10 @@ async def answer_cmd(message: Message):
 
 @router.callback_query(F.data.startswith("page:"))
 async def paginate_users(callback: CallbackQuery):
-    page = int(callback.data.split(":")[1])
+    callback_data = callback.data.split(":")[1]
+    page = int(callback.data.split(":")[2])
     users = await database.get_all_users()
-    kb = select_user_kb(users, page=page)
+    kb = select_user_kb(users, callback=callback_data, page=page)
     await callback.message.edit_reply_markup(reply_markup=kb)
     await callback.answer()
 

@@ -1,6 +1,8 @@
 from bot.db import database
 from aiogram.exceptions import AiogramError
-from bot.utils.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR, REGISTERED_USERS_HEADER, QUESTION_LIST_HEADER, SUGGEST_ANSWER_COMMAND, FUNDRAISING_DESIGN_2000_10000, FUNDRAISING_DESIGN_10000_150000, FUNDRAISING_DESIGN_150000_20000, FUNDRAISING_DESIGN_20000_25000, FUNDRAISING_DESIGN_25000_50000, FUNDRAISING_DESIGN_MENTOR
+from bot.utils.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR, REGISTERED_USERS_HEADER, QUESTION_LIST_HEADER, SUGGEST_ANSWER_COMMAND, FUNDRAISING_DESIGN_2000_10000, FUNDRAISING_DESIGN_10000_150000, FUNDRAISING_DESIGN_150000_20000, FUNDRAISING_DESIGN_20000_25000, FUNDRAISING_DESIGN_25000_50000, FUNDRAISING_DESIGN_MENTOR, DEFAULT_PROFILE_NAME
+MAX_MESSAGE_LENGTH = 4096
+
 
 async def format_profile(user_id: int) -> str:
     user = await database.get_user_by_id(user_id)
@@ -11,6 +13,7 @@ async def format_profile(user_id: int) -> str:
         f"{SEPARATOR}"        
         f"{f"{header}":<100}\n"
         f"{SEPARATOR}"
+        f"{DEFAULT_PROFILE_NAME}{user.get('default_name') or ''}\n"
         f"{PROFILE_NAME}{user.get('first_name') or ''} {user.get('last_name') or ''} @{user.get('username') or ''}\n"
         f"{PROFILE_PHONE}{user.get('phone_number') or '—'}\n"
         f"{PROFILE_INSTAGRAM}{user.get('instagram') or '—'}\n"
@@ -25,7 +28,7 @@ async def format_profile(user_id: int) -> str:
     if user.get('role') == "participant":
         mentor = await database.get_user_by_id(user.get('mentor_id'))
         if mentor:
-            base_info += f"{PROFILE_MENTOR}{mentor.get('first_name', '')} {mentor.get('last_name', '')} @{mentor.get('username', '')}\n"
+            base_info += f"{PROFILE_MENTOR}{mentor.get('default_name', '')}\n"
 
     return base_info
 
@@ -62,7 +65,7 @@ async def format_user_list() -> str:
             print("exception")
             username_str = "no_username"
         text_lines.append(
-            f"ID: {u['telegram_id']} | Name: {u['first_name']} {u['last_name']} | Username: {username_str} | Phone: {u['phone_number']} | Role: {u['role']}{role_str} | Registaerd at: {u['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
+            f"ID: {u['telegram_id']} | Name: u{['default_name']} | Fullname: {u['first_name']} {u['last_name']} | Username: {username_str} | Phone: {u['phone_number']} | Role: {u['role']}{role_str} | Registaerd at: {u['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
         )
 
     text = "\n".join(text_lines)
@@ -80,7 +83,7 @@ async def format_question_list() -> str:
         if not user:
             continue
         text_lines.append(
-            f"{q['id']}) Запитує: {user['first_name']} {user['last_name']} @{user['username']} | Статус: {q['status']} | Text: {q['question_text']} | Запитання надіслано: {q['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
+            f"❓{q['id']}) Запитує: {user['default_name']} ({user['first_name']} {user['last_name']} @{user['username']}) | Статус: {q['status']} | Text: {q['question_text']} | Запитання надіслано: {q['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
         )
 
     text = "\n".join(text_lines)
@@ -106,3 +109,18 @@ async def format_design_msg(user) -> str:
     if goal < 25000:
         return FUNDRAISING_DESIGN_20000_25000.format(amount=goal, instagram=insta)
     return FUNDRAISING_DESIGN_25000_50000.format(amount=goal, instagram=insta)
+
+
+async def send_long_message(bot, chat_id: int, text: str, **kwargs):
+    while text:
+        chunk = text[:MAX_MESSAGE_LENGTH]
+        if len(text) > MAX_MESSAGE_LENGTH:
+            split_at = max(chunk.rfind("\n"), chunk.rfind(" "))
+            if split_at == -1:
+                split_at = MAX_MESSAGE_LENGTH
+            chunk = text[:split_at]
+            text = text[split_at:].lstrip()
+        else:
+            text = ""
+        
+        await bot.send_message(chat_id, chunk, **kwargs)

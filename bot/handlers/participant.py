@@ -8,12 +8,13 @@ from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile
 import re
 from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
 from bot.utils.files import reupload_as_photo
-from bot.utils.texts import ALREADY_REGISTERED_MENTOR, PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, MANAGE_YOUR_GROUP, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT, CONFIRM_DATA_PROCESSING, PARTICIPANT_REGISTRATION_END
+from bot.utils.texts import PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, MANAGE_YOUR_GROUP, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT, CONFIRM_DATA_PROCESSING, PARTICIPANT_REGISTRATION_END, MENTOR_BUTTON, PARTICIPANT_NAME_PROMPT
 
 router = Router()
 
 class ParticipantProfile(StatesGroup):
     select_mentor = State()
+    name = State()
     instagram = State()
     fundraising_goal = State()
     photo = State()
@@ -58,10 +59,10 @@ async def mentor_select(callback: CallbackQuery, state: FSMContext):
     
     await callback.message.edit_reply_markup()
     mentor = await database.get_user_by_id(mentor_id)
-    text = f"{SELECTED_MENTOR} {mentor.get('first_name') or ''} {mentor.get('last_name') or ''} (@{mentor.get('username') or ''})!"
+    text = f"{SELECTED_MENTOR} {mentor.get('default_name') or ''})!"
     await callback.message.answer(text, parse_mode="HTML")
-    await state.set_state(ParticipantProfile.instagram)
-    await callback.message.answer(PARTICIPANT_INSTAGRAM_PROMPT)
+    await state.set_state(ParticipantProfile.name)
+    await callback.message.answer(PARTICIPANT_NAME_PROMPT)
     await callback.answer()
 
 
@@ -97,6 +98,14 @@ async def mentor_navigation(callback: CallbackQuery, state: FSMContext):
     )
     await callback.answer()
 
+# Name input
+@router.message(ParticipantProfile.name, F.text)
+async def mentor_instagram(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    await state.set_state(ParticipantProfile.instagram)
+    await database.set_default_name(telegram_id=message.from_user.id, name=message.text)
+    await message.answer(PARTICIPANT_INSTAGRAM_PROMPT)
+
 # Instagram input
 @router.message(ParticipantProfile.instagram)
 async def participant_instagram(message: Message, state: FSMContext):
@@ -121,7 +130,7 @@ async def participant_instagram(message: Message, state: FSMContext):
 @router.message(ParticipantProfile.fundraising_goal)
 async def participant_goal(message: Message, state: FSMContext):
     text = message.text.strip().replace(",", ".").lstrip("грн").strip()
-    valid = await fundraising_goal_valid(text, 1000)
+    valid = await fundraising_goal_valid(text, 2000)
     if not valid:
         await message.answer(INVALID_NUMBER)
         return
@@ -211,7 +220,7 @@ async def participant_confirm(callback: CallbackQuery, state: FSMContext):
     await callback.answer() 
 
 
-@router.message(F.text.startswith("/mentor"))
+@router.message((F.text.startswith("/mentor") ) | ( F.text == MENTOR_BUTTON))
 async def remove_user_cmd(message: Message):
     user = await database.get_user_by_id(message.from_user.id)
     mentor_id = user.get('mentor_id')

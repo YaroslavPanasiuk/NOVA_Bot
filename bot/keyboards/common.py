@@ -1,5 +1,6 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from bot.utils.texts import PHONE_SHARE_BUTTON, ROLE_MENTOR_BUTTON, ROLE_PARTICIPANT_BUTTON, CONFIRM_YES, CONFIRM_NO, CAROUSEL_LEFT, CAROUSEL_RIGHT, CAROUSEL_SELECT, APPROVE, REJECT, START_BUTTON
+from bot.utils.texts import PHONE_SHARE_BUTTON, ROLE_MENTOR_BUTTON, ROLE_PARTICIPANT_BUTTON, CONFIRM_YES, CONFIRM_NO, CAROUSEL_LEFT, CAROUSEL_RIGHT, CAROUSEL_SELECT, APPROVE, REJECT, START_BUTTON, PROFILE_BUTTON, PROFILE_VIEW_BUTTON, TEAM_BUTTON, CHANGE_GOAL_BUTTON, CHANGE_INSTAGRAM_BUTTON, CHANGE_MONOBANK_BUTTON, CHANGE_DESCRIPTION_BUTTON, MENTOR_BUTTON, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, LIST_QUESTIONS_BUTTON, ANSWER_BUTTON, RESTART_BUTTON, HELP_BUTTON
+from bot.config import ADMINS, TECH_SUPPORT_ID
 
 def phone_request_kb():
     return ReplyKeyboardMarkup(
@@ -88,3 +89,38 @@ def questions_kb(questions) -> InlineKeyboardMarkup:
         ]
     )
     return keyboard
+
+
+def menu_kb(user) -> InlineKeyboardMarkup:
+    buttons = [
+            [KeyboardButton(text=PROFILE_BUTTON)],
+        ]
+    if user['role'] == 'mentor' and user['status'] == 'approved':
+        buttons.append([KeyboardButton(text=TEAM_BUTTON)])
+        buttons.append([KeyboardButton(text=PROFILE_VIEW_BUTTON)])
+        buttons.append([KeyboardButton(text=CHANGE_GOAL_BUTTON), KeyboardButton(text=CHANGE_DESCRIPTION_BUTTON)])
+        buttons.append([KeyboardButton(text=CHANGE_MONOBANK_BUTTON), KeyboardButton(text=CHANGE_INSTAGRAM_BUTTON)])
+
+    if user['role'] == 'mentor' and user['status'] != 'approved':
+        buttons.append([KeyboardButton(text=RESTART_BUTTON)])
+        
+    if user['role'] == 'participant':
+        buttons.append([KeyboardButton(text=MENTOR_BUTTON)])
+        buttons.append([KeyboardButton(text=RESTART_BUTTON)])
+    if str(user['telegram_id']) in ADMINS:
+        buttons.append([KeyboardButton(text=LIST_USERS_BUTTON), KeyboardButton(text=LIST_MENTORS_BUTTON)])
+        buttons.append([KeyboardButton(text=PENDING_MENTORS_BUTTON), KeyboardButton(text=REMOVE_USER_BUTTON)])
+        buttons.append([KeyboardButton(text=USER_PROFILE_BUTTON), KeyboardButton(text=SEND_DESIGN_BUTTON)])
+       
+    if str(user['telegram_id']) == TECH_SUPPORT_ID:
+        buttons.append([KeyboardButton(text=LIST_QUESTIONS_BUTTON), KeyboardButton(text=ANSWER_BUTTON)])
+    
+    buttons.append([KeyboardButton(text=HELP_BUTTON)])
+    print(len(buttons))
+
+    return ReplyKeyboardMarkup(
+        keyboard=buttons,
+        resize_keyboard=True,
+        one_time_keyboard=False,
+        selective=True
+    )

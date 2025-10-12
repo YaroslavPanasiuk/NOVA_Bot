@@ -2,13 +2,13 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile, ReplyKeyboardRemove
 from aiogram.filters import Command
 from aiogram.fsm.state import State, StatesGroup
-from bot.keyboards.common import start_kb, role_choice_kb, phone_request_kb
+from bot.keyboards.common import start_kb, role_choice_kb, phone_request_kb, menu_kb
 from bot.db import database
 from aiogram.fsm.context import FSMContext
 from bot.handlers.participant import start_participant
 from bot.handlers.mentor import start_mentor
 from bot.utils.formatters import format_profile
-from bot.utils.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT, TECH_SUPPORT_COMMANDS, SUGGEST_ANSWER_COMMAND, CANCELED
+from bot.utils.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT, TECH_SUPPORT_COMMANDS, SUGGEST_ANSWER_COMMAND, CANCELED, RESTART_BUTTON, PROFILE_BUTTON, HELP_BUTTON
 from bot.config import ADMINS, TECH_SUPPORT_ID, START_VIDEO_URL
 
 router = Router()
@@ -57,7 +57,7 @@ async def phone_verification(message: Message, state: FSMContext):
         reply_markup=role_choice_kb()
     )
 
-@router.message(F.text == "/restart")
+@router.message((F.text == "/restart" ) | ( F.text == RESTART_BUTTON))
 async def phone_verification(message: Message, state: FSMContext):
     user = await database.get_user_by_id(message.from_user.id)
     if not user:
@@ -94,7 +94,7 @@ async def role_choice(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-@router.message(F.text == "/profile")
+@router.message((F.text == PROFILE_BUTTON)|(F.text == '/profile'))
 async def show_my_profile(message: Message):
     telegram_id = message.from_user.id
 
@@ -117,21 +117,11 @@ async def show_my_profile(message: Message):
 async def show_menu(message: Message):
     text = MENU_PROMPT
     user = await database.get_user_by_id(message.from_user.id)
-    if not user:
-        await message.answer(USER_NOT_REGISTERED)
-        return
-    if user.get("role") == "mentor" and user.get("status") == "approved":
-        text  += MENTOR_COMMANDS
-    if user.get("role") == "participant":
-        text  += PARTICIPANT_COMMANDS
-    if str(user.get("telegram_id")) in ADMINS:
-        text  += ADMIN_COMMANDS
-    if str(user.get("telegram_id")) == TECH_SUPPORT_ID:
-        text  += TECH_SUPPORT_COMMANDS
-    await message.answer(text)
+    kb = menu_kb(user)
+    await message.answer(text, reply_markup=kb)
 
 
-@router.message(F.text == "/help")
+@router.message((F.text == "/help" ) | ( F.text == HELP_BUTTON))
 async def show_help(message: Message, state: FSMContext):
     user = await database.get_user_by_id(message.from_user.id)
     if not user:

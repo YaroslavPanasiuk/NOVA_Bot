@@ -21,6 +21,7 @@ async def init_db():
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS bot_users (
             telegram_id BIGINT PRIMARY KEY,
+            default_name TEXT DEFAULT '',
             first_name TEXT DEFAULT '',
             last_name TEXT DEFAULT '',
             username TEXT DEFAULT '',
@@ -81,6 +82,16 @@ async def set_photo(telegram_id: int, file_id: str):
         SET photo_url=$1
         WHERE telegram_id=$2;
         """, file_id, telegram_id)
+
+
+async def set_default_name(telegram_id: int, name: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("""
+        UPDATE bot_users
+        SET default_name=$1
+        WHERE telegram_id=$2;
+        """, name, telegram_id)
 
 
 async def set_jar(telegram_id: int, jar_url: str):

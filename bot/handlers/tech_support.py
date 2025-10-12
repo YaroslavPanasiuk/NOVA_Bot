@@ -4,16 +4,16 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.db import database
 from bot.config import TECH_SUPPORT_ID
-from bot.utils.formatters import format_question_list
+from bot.utils.formatters import format_question_list, send_long_message
 from bot.keyboards.common import questions_kb
-from bot.utils.texts import NOT_ADMIN, SELECT_QUESTION, QUESTIONS_NOT_FOUND, USER_NOT_FOUND
+from bot.utils.texts import NOT_ADMIN, SELECT_QUESTION, QUESTIONS_NOT_FOUND, USER_NOT_FOUND, LIST_QUESTIONS_BUTTON, ANSWER_BUTTON
 
 router = Router()
 
 class TechSupportStates(StatesGroup):
     waiting_for_answer = State()
 
-@router.message(F.text == "/list_questions")
+@router.message((F.text == "/list_questions" ) | ( F.text == LIST_QUESTIONS_BUTTON))
 async def list_questions_cmd(message: Message):
     if str(message.from_user.id) != TECH_SUPPORT_ID:
         await message.answer(NOT_ADMIN)
@@ -22,10 +22,10 @@ async def list_questions_cmd(message: Message):
     text = await format_question_list()
     if not text:
         await message.answer(QUESTIONS_NOT_FOUND)
-    await message.answer(text)
+    await send_long_message(message.bot, message.from_user.id, text)
 
 
-@router.message(F.text == "/answer")
+@router.message((F.text == "/answer" | F.text == ANSWER_BUTTON))
 async def answer_cmd(message: Message):
     if str(message.from_user.id) != TECH_SUPPORT_ID:
         await message.answer(NOT_ADMIN)

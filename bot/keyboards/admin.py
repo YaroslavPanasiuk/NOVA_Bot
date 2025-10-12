@@ -23,7 +23,7 @@ def mentor_action_kb(mentor_id: int):
         ]
     ])
 
-def select_user_kb(users, callback, page=0, page_size=8):
+def select_user_kb(users, callback, page=0, page_size=5):
     start = page * page_size
     end = start + page_size
     buttons = [
@@ -37,9 +37,9 @@ def select_user_kb(users, callback, page=0, page_size=8):
     # Navigation buttons
     nav_buttons = []
     if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"page:{page-1}"))
+        nav_buttons.append(InlineKeyboardButton(text="⬅️ Prev", callback_data=f"page:{callback}:{page-1}"))
     if end < len(users):
-        nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page:{page+1}"))
+        nav_buttons.append(InlineKeyboardButton(text="➡️ Next", callback_data=f"page:{callback}:{page+1}"))
     if nav_buttons:
         buttons.append(nav_buttons)
     
