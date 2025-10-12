@@ -1,5 +1,5 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from bot.texts import APPROVE, REJECT
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from bot.utils.texts import APPROVE, REJECT
 
 def pending_mentors_kb(mentors: list):
     """Generate a list of pending mentors as buttons"""
@@ -22,3 +22,25 @@ def mentor_action_kb(mentor_id: int):
             InlineKeyboardButton(text=REJECT, callback_data=f"mentor_reject:{mentor_id}")
         ]
     ])
+
+def select_user_kb(users, callback, page=0, page_size=8):
+    start = page * page_size
+    end = start + page_size
+    buttons = [
+        [InlineKeyboardButton(
+            text=f"{user['first_name']} {user.get('last_name', '')} ({user.get('username', '')})".strip(),
+            callback_data=f"{callback}:{user['telegram_id']}"
+        )]
+        for user in users[start:end]
+    ]
+    
+    # Navigation buttons
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"page:{page-1}"))
+    if end < len(users):
+        nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page:{page+1}"))
+    if nav_buttons:
+        buttons.append(nav_buttons)
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)

@@ -4,13 +4,11 @@ from aiogram.filters import Command
 from aiogram.fsm.state import State, StatesGroup
 from bot.keyboards.common import start_kb, role_choice_kb, phone_request_kb
 from bot.db import database
-from bot.handlers.mentor import MentorProfile, router as mentor_router
-from bot.handlers.participant import ParticipantProfile, router as participant_router
 from aiogram.fsm.context import FSMContext
 from bot.handlers.participant import start_participant
 from bot.handlers.mentor import start_mentor
 from bot.utils.formatters import format_profile
-from bot.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT, TECH_SUPPORT_COMMANDS, SUGGEST_ANSWER_COMMAND, CANCELED
+from bot.utils.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT, TECH_SUPPORT_COMMANDS, SUGGEST_ANSWER_COMMAND, CANCELED
 from bot.config import ADMINS, TECH_SUPPORT_ID, START_VIDEO_URL
 
 router = Router()
@@ -18,6 +16,10 @@ router = Router()
 class GeneralStates(StatesGroup):
     help = State()
 
+@router.message(F.animation)
+async def video(message: Message, state: FSMContext):
+    url = message.animation.file_id
+    await message.answer(url)
 
 @router.message(Command("start"))
 async def start_cmd(message: Message):

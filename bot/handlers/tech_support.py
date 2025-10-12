@@ -6,7 +6,7 @@ from bot.db import database
 from bot.config import TECH_SUPPORT_ID
 from bot.utils.formatters import format_question_list
 from bot.keyboards.common import questions_kb
-from bot.texts import NOT_ADMIN, SELECT_QUESTION, QUESTIONS_NOT_FOUND, USER_NOT_FOUND
+from bot.utils.texts import NOT_ADMIN, SELECT_QUESTION, QUESTIONS_NOT_FOUND, USER_NOT_FOUND
 
 router = Router()
 
@@ -37,6 +37,9 @@ async def answer_cmd(message: Message):
         if question['status'] == "not answered":
             not_answered.append(question)
 
+    if len(questions) == 0:
+        await message.answer(QUESTIONS_NOT_FOUND)
+        return
     kb = questions_kb(not_answered)
     await message.answer(SELECT_QUESTION, reply_markup=kb)
 

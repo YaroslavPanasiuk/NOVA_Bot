@@ -1,6 +1,6 @@
 from bot.db import database
 from aiogram.exceptions import AiogramError
-from bot.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR, REGISTERED_USERS_HEADER, QUESTION_LIST_HEADER, SUGGEST_ANSWER_COMMAND
+from bot.utils.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR, REGISTERED_USERS_HEADER, QUESTION_LIST_HEADER, SUGGEST_ANSWER_COMMAND, FUNDRAISING_DESIGN_2000_10000, FUNDRAISING_DESIGN_10000_150000, FUNDRAISING_DESIGN_150000_20000, FUNDRAISING_DESIGN_20000_25000, FUNDRAISING_DESIGN_25000_50000, FUNDRAISING_DESIGN_MENTOR
 
 async def format_profile(user_id: int) -> str:
     user = await database.get_user_by_id(user_id)
@@ -86,3 +86,23 @@ async def format_question_list() -> str:
     text = "\n".join(text_lines)
     text += f"\n{SUGGEST_ANSWER_COMMAND}"
     return text
+
+
+async def format_design_msg(user) -> str:
+    goal = user['fundraising_goal']
+    mentor = await database.get_user_by_id(user['mentor_id'])
+    print(mentor)
+    insta = mentor['instagram']
+    if user['role'] == 'mentor':
+        return FUNDRAISING_DESIGN_MENTOR.format(amount=goal)
+    if goal < 2000:
+        return None
+    if goal < 10000:
+        return FUNDRAISING_DESIGN_2000_10000.format(amount=goal, instagram=insta)
+    if goal < 15000:
+        return FUNDRAISING_DESIGN_10000_150000.format(amount=goal, instagram=insta)
+    if goal < 20000:
+        return FUNDRAISING_DESIGN_150000_20000.format(amount=goal, instagram=insta)
+    if goal < 25000:
+        return FUNDRAISING_DESIGN_20000_25000.format(amount=goal, instagram=insta)
+    return FUNDRAISING_DESIGN_25000_50000.format(amount=goal, instagram=insta)
