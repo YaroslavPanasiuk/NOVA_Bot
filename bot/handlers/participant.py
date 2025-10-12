@@ -224,11 +224,11 @@ async def participant_confirm(callback: CallbackQuery, state: FSMContext):
 async def remove_user_cmd(message: Message):
     user = await database.get_user_by_id(message.from_user.id)
     mentor_id = user.get('mentor_id')
-    text = await format_profile(mentor_id)
     mentor = await database.get_user_by_id(mentor_id)
+    text = mentor['description']
 
     if mentor.get("photo_url"):
-        document = mentor["photo_url"]
+        photo = await reupload_as_photo(message.bot, mentor.get("photo_url"))
     else:
-        document = FSInputFile("resources/default.png", filename="no-profile-picture.png")
-    await message.answer_document(document=document, caption=text, parse_mode="HTML")
+        photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    await message.answer_photo(photo=photo, caption=text, parse_mode="HTML")
