@@ -388,7 +388,7 @@ async def phone_verification(message: Message, state: FSMContext):
         await message.answer(USER_NOT_REGISTERED)
         return
     await database.set_role(message.from_user.id, "pending")
-    await database.set_mentor(message.from_user.id, 0)
+    await database.set_mentor(message.from_user.id, None)
     await message.bot.send_message(
         chat_id=message.from_user.id,
         text=SELECT_ROLE,
