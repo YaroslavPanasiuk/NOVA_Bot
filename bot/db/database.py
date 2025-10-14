@@ -157,7 +157,7 @@ async def set_goal(telegram_id: int, goal: str):
         """, goal, telegram_id)
 
 
-async def set_mentor(telegram_id: int, mentor: str):
+async def set_mentor(telegram_id: int, mentor: int):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
         await conn.execute("""
