@@ -7,8 +7,9 @@ from bot.db import database
 from bot.config import ADMINS, DB_CHAT_ID
 from aiogram.filters import Command
 from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb
+from bot.keyboards.common import role_choice_kb
 from bot.utils.formatters import format_profile, format_user_list, format_design_msg, format_profile_image
-from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED_MENTOR, YOU_HAVE_BEEN_REJECTED_MENTOR, DESIGN_CAPTION
+from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED_MENTOR, YOU_HAVE_BEEN_REJECTED_MENTOR, DESIGN_CAPTION, USER_NOT_REGISTERED, SELECT_ROLE
 from bot.utils.files import reupload_as_photo
 
 router = Router()
@@ -375,3 +376,21 @@ async def remove_user_cmd(message: Message):
         await message.answer(MENTOR_HAS_TEAM_EXCEPTION, show_alert=True)
     except Exception:
         await message.answer(REMOVE_USER_EXCEPTION, show_alert=True)
+
+
+@router.message(F.text == "/force_restart" )
+async def phone_verification(message: Message, state: FSMContext):
+    if str(message.from_user.id) not in ADMINS:
+        await message.answer(NOT_ADMIN)
+        return
+    user = await database.get_user_by_id(message.from_user.id)
+    if not user:
+        await message.answer(USER_NOT_REGISTERED)
+        return
+    await database.set_role(message.from_user.id, "pending")
+    await database.set_mentor(message.from_user.id, '')
+    await message.bot.send_message(
+        chat_id=message.from_user.id,
+        text=SELECT_ROLE,
+        reply_markup=role_choice_kb()
+    )
