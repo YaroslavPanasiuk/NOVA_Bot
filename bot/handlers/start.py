@@ -108,7 +108,7 @@ async def show_my_profile(message: Message):
     photo = await format_profile_image(telegram_id)
 
     if photo:
-        await message.answer_document(document=photo['file_id'], caption=text, parse_mode="HTML")
+        await message.answer_document(document=photo, caption=text, parse_mode="HTML")
     else:
         await message.answer(text, parse_mode="HTML")
 
