@@ -116,7 +116,7 @@ async def approve_mentor(callback: CallbackQuery):
 
     mentor_id = int(callback.data.split(":")[1])
     await database.update_status(mentor_id, "approved")
-    await callback.message.edit_text(MENTOR_APPROVED)
+    await callback.message.edit_caption(MENTOR_APPROVED)
     await callback.bot.send_message(chat_id=mentor_id, text=YOU_HAVE_BEEN_APPROVED_MENTOR)
     await callback.answer("Approved ✅")
 
