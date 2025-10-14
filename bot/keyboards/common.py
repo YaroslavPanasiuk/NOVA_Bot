@@ -1,11 +1,20 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from bot.utils.texts import PHONE_SHARE_BUTTON, ROLE_MENTOR_BUTTON, ROLE_PARTICIPANT_BUTTON, CONFIRM_YES, CONFIRM_NO, CAROUSEL_LEFT, CAROUSEL_RIGHT, CAROUSEL_SELECT, APPROVE, REJECT, START_BUTTON, PROFILE_BUTTON, PROFILE_VIEW_BUTTON, TEAM_BUTTON, CHANGE_GOAL_BUTTON, CHANGE_INSTAGRAM_BUTTON, CHANGE_MONOBANK_BUTTON, CHANGE_DESCRIPTION_BUTTON, MENTOR_BUTTON, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, LIST_QUESTIONS_BUTTON, ANSWER_BUTTON, RESTART_BUTTON, HELP_BUTTON
+from bot.utils.texts import PHONE_SHARE_BUTTON, ROLE_MENTOR_BUTTON, ROLE_PARTICIPANT_BUTTON, CONFIRM_YES, CONFIRM_NO, CAROUSEL_LEFT, CAROUSEL_RIGHT, CAROUSEL_SELECT, APPROVE, REJECT, START_BUTTON, PROFILE_BUTTON, PROFILE_VIEW_BUTTON, TEAM_BUTTON, CHANGE_GOAL_BUTTON, CHANGE_INSTAGRAM_BUTTON, CHANGE_MONOBANK_BUTTON, CHANGE_DESCRIPTION_BUTTON, MENTOR_BUTTON, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, LIST_QUESTIONS_BUTTON, ANSWER_BUTTON, RESTART_BUTTON, HELP_BUTTON, DESIGN_WHEEL_BUTTON, DESIGN_CONNECTION_BUTTON, DESIGN_CAMERA_BUTTON, DESIGN_ENGINE_BUTTON, DESIGN_CIRCUIT_BUTTON, CANCEL_REGISTRATION_BUTTON
 from bot.config import ADMINS, TECH_SUPPORT_ID
 
 def phone_request_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=PHONE_SHARE_BUTTON, request_contact=True)]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+
+def cancel_registration_kb():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=CANCEL_REGISTRATION_BUTTON)]
         ],
         resize_keyboard=True,
         one_time_keyboard=True
@@ -78,6 +87,17 @@ def confirm_data_processing_kb() -> InlineKeyboardMarkup:
     return keyboard
 
 
+def confirm_kb(callback: str) -> InlineKeyboardMarkup:
+    print(callback)
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[
+            InlineKeyboardButton(text=CONFIRM_YES, callback_data=f"{callback}:yes"),
+            InlineKeyboardButton(text=CONFIRM_NO, callback_data=f"{callback}:no")
+        ]]
+    )
+    return keyboard
+
+
 def questions_kb(questions) -> InlineKeyboardMarkup:
 
     keyboard = InlineKeyboardMarkup(
@@ -124,3 +144,17 @@ def menu_kb(user) -> InlineKeyboardMarkup:
         one_time_keyboard=False,
         selective=True
     )
+
+
+def select_design_kb() -> InlineKeyboardMarkup:
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=DESIGN_WHEEL_BUTTON,callback_data="design_preference:wheel")],
+            [InlineKeyboardButton(text=DESIGN_CONNECTION_BUTTON,callback_data="design_preference:connection")],
+            [InlineKeyboardButton(text=DESIGN_CAMERA_BUTTON,callback_data="design_preference:camera")],
+            [InlineKeyboardButton(text=DESIGN_ENGINE_BUTTON,callback_data="design_preference:engine")],
+            [InlineKeyboardButton(text=DESIGN_CIRCUIT_BUTTON,callback_data="design_preference:circuit")]
+        ]
+    )
+    return keyboard

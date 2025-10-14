@@ -29,11 +29,11 @@ async def init_db():
             phone_number TEXT DEFAULT '',
             instagram TEXT DEFAULT '',
             fundraising_goal NUMERIC(12,2) DEFAULT 0,
-            photo_url TEXT DEFAULT '',
             jar_url TEXT DEFAULT '',
             description TEXT DEFAULT 'no description',
             status TEXT DEFAULT 'pending',
             mentor_id BIGINT REFERENCES bot_users(telegram_id),
+            design_preference TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT NOW()
         );
         """)
@@ -43,6 +43,15 @@ async def init_db():
             telegram_id BIGINT REFERENCES bot_users(telegram_id) ON DELETE CASCADE,
             question_text TEXT NOT NULL DEFAULT '',
             status TEXT DEFAULT 'not answered',
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        """)
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS files (
+            file_id TEXT PRIMARY KEY,
+            type TEXT CHECK (type IN ('video','animation','photo_compressed', 'photo_uncompressed', 'design_compressed', 'design_uncompressed')),
+            user_id BIGINT REFERENCES bot_users(telegram_id) ON DELETE CASCADE,
+            name TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT NOW()
         );
         """)
@@ -74,14 +83,18 @@ async def set_role(telegram_id: int, role: str):
         """, role, telegram_id)
 
 
-async def set_photo(telegram_id: int, file_id: str):
+async def set_photo(telegram_id: int, file_id: str, type='photo_uncompressed'):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("DELETE FROM files WHERE user_id=$1 AND type=$2", telegram_id, type)
         await conn.execute("""
-        UPDATE bot_users
-        SET photo_url=$1
-        WHERE telegram_id=$2;
-        """, file_id, telegram_id)
+            INSERT INTO files (file_id, type, user_id)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (file_id) DO UPDATE SET
+                type = EXCLUDED.type,
+                user_id = EXCLUDED.user_id;
+        """, file_id, type, telegram_id)
+
 
 
 async def set_default_name(telegram_id: int, name: str):
@@ -124,6 +137,16 @@ async def set_instagram(telegram_id: int, instagram: str):
         """, instagram, telegram_id)
 
 
+async def set_design_preference(telegram_id: int, design_preference: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("""
+        UPDATE bot_users
+        SET design_preference=$1
+        WHERE telegram_id=$2;
+        """, design_preference, telegram_id)
+
+
 async def set_goal(telegram_id: int, goal: str):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
@@ -144,16 +167,16 @@ async def set_mentor(telegram_id: int, mentor: str):
         """, mentor, telegram_id)
 
 # Save mentor profile
-async def save_mentor_profile(telegram_id: int, instagram: str, fundraising_goal: float, photo_url: str):
+async def save_mentor_profile(telegram_id: int, instagram: str, fundraising_goal: float):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
         await conn.execute("""
         UPDATE bot_users
-        SET instagram=$1, fundraising_goal=$2, photo_url=$3
-        WHERE telegram_id=$4 AND role='mentor';
-        """, instagram, fundraising_goal, photo_url, telegram_id)
+        SET instagram=$1, fundraising_goal=$2
+        WHERE telegram_id=$3 AND role='mentor';
+        """, instagram, fundraising_goal, telegram_id)
 
-async def update_mentor_status(telegram_id: int, status: str):
+async def update_status(telegram_id: int, status: str):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
         await conn.execute("""
@@ -163,14 +186,14 @@ async def update_mentor_status(telegram_id: int, status: str):
         """, status, telegram_id)
 
 # Save participant profile
-async def save_participant_profile(telegram_id: int, mentor_id: int, instagram: str, fundraising_goal: float, photo_url: str):
+async def save_participant_profile(telegram_id: int, mentor_id: int, instagram: str, fundraising_goal: float):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
         await conn.execute("""
         UPDATE bot_users
-        SET mentor_id=$1, instagram=$2, fundraising_goal=$3, photo_url=$4
-        WHERE telegram_id=$5 AND role='participant';
-        """, mentor_id, instagram, fundraising_goal, photo_url, telegram_id)
+        SET mentor_id=$1, instagram=$2, fundraising_goal=$3
+        WHERE telegram_id=$4 AND role='participant';
+        """, mentor_id, instagram, fundraising_goal, telegram_id)
 
 # Set participant's mentor
 async def set_participant_mentor(telegram_id: int, mentor_id: int):
@@ -226,6 +249,17 @@ async def get_pending_mentors():
         """)
         return [dict(r) for r in rows]
 
+# Get pending participants
+async def get_pending_participants(mentor_id):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        rows = await conn.fetch("""
+            SELECT *
+            FROM bot_users
+            WHERE role='participant' AND status='pending' AND mentor_id=$1
+        """, mentor_id)
+        return [dict(r) for r in rows]
+
 # Get user by telegram_id
 async def get_user_by_id(telegram_id: int):
     async with pool.acquire() as conn:
@@ -237,6 +271,13 @@ async def get_user_by_id(telegram_id: int):
 async def delete_user(telegram_id: int):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("DELETE FROM bot_users WHERE telegram_id=$1", telegram_id)
+
+async def force_delete_user(telegram_id: int):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("DELETE FROM bot_users WHERE mentor_id=$1", telegram_id)
+        await conn.execute("DELETE FROM user_questions WHERE telegram_id=$1", telegram_id)
         await conn.execute("DELETE FROM bot_users WHERE telegram_id=$1", telegram_id)
 
 # Get n-th approved mentor
@@ -260,7 +301,7 @@ async def get_participants_of_mentor(mentor_id: int):
         rows = await conn.fetch("""
             SELECT *
             FROM bot_users
-            WHERE role = 'participant' AND mentor_id = $1
+            WHERE role = 'participant' AND mentor_id = $1 AND status = 'approved'
             ORDER BY created_at
         """, mentor_id)
         return [dict(r) for r in rows]
@@ -300,3 +341,62 @@ async def set_question_status(id: int, status: str):
         SET status=$1
         WHERE id=$2;
         """, status, id)
+    
+
+async def add_file(file_id: int, type: str, name="", user_id=0):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("""
+            INSERT INTO files (file_id, type, name, user_id)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (file_id) DO UPDATE SET
+                type = EXCLUDED.type,
+                name = EXCLUDED.name,
+                user_id = EXCLUDED.user_id;
+        """, file_id, type, name, user_id)
+
+
+async def get_file_by_id(id:str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT * FROM files WHERE file_id=$1", id)
+        return dict(row) if row else None
+
+
+async def get_file_by_name(name:str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT * FROM files WHERE name=$1", name)
+        return dict(row) if row else None
+
+
+async def get_user_compressed_photo(user_id:str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT * FROM files WHERE user_id=$1 AND type='photo_compressed'", user_id)
+        return dict(row) if row else None
+
+
+async def get_user_uncompressed_photo(user_id:str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT * FROM files WHERE user_id=$1 AND type='photo_uncompressed'", user_id)
+        return dict(row) if row else None
+
+
+async def get_user_compressed_design(user_id:str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT * FROM files WHERE user_id=$1 AND type='design_compressed'", user_id)
+        return dict(row) if row else None
+
+
+async def get_user_uncompressed_design(user_id:str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT * FROM files WHERE user_id=$1 AND type='design_uncompressed'", user_id)
+        return dict(row) if row else None
+
+
+
+

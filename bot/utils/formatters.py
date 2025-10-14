@@ -1,6 +1,7 @@
 from bot.db import database
 from aiogram.exceptions import AiogramError
-from bot.utils.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR, REGISTERED_USERS_HEADER, QUESTION_LIST_HEADER, SUGGEST_ANSWER_COMMAND, FUNDRAISING_DESIGN_2000_10000, FUNDRAISING_DESIGN_10000_150000, FUNDRAISING_DESIGN_150000_20000, FUNDRAISING_DESIGN_20000_25000, FUNDRAISING_DESIGN_25000_50000, FUNDRAISING_DESIGN_MENTOR, DEFAULT_PROFILE_NAME
+from aiogram.types import InputMediaPhoto, FSInputFile
+from bot.utils.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR, REGISTERED_USERS_HEADER, QUESTION_LIST_HEADER, SUGGEST_ANSWER_COMMAND, FUNDRAISING_DESIGN_2000_10000, FUNDRAISING_DESIGN_10000_150000, FUNDRAISING_DESIGN_150000_20000, FUNDRAISING_DESIGN_20000_25000, FUNDRAISING_DESIGN_25000_50000, FUNDRAISING_DESIGN_MENTOR, DEFAULT_PROFILE_NAME, DESIGN_WHEEL_BUTTON, DESIGN_CAMERA_BUTTON, DESIGN_CIRCUIT_BUTTON, DESIGN_CONNECTION_BUTTON, DESIGN_ENGINE_BUTTON, PROFILE_DESIGN_PREFERENCE
 MAX_MESSAGE_LENGTH = 4096
 
 
@@ -19,6 +20,7 @@ async def format_profile(user_id: int) -> str:
         f"{PROFILE_INSTAGRAM}{user.get('instagram') or '—'}\n"
         f"{PROFILE_GOAL}{format_amount(user.get('fundraising_goal', 0.0))}\n"
         f"{PROFILE_JAR}{user.get('jar_url', '—')}\n"
+        f"{PROFILE_DESIGN_PREFERENCE}{user.get('design_preference', '—')}\n"
     )
 
     if user.get('role') == "mentor":
@@ -32,6 +34,31 @@ async def format_profile(user_id: int) -> str:
 
     return base_info
 
+
+async def format_profile_image(user_id: int):
+    photo = await database.get_user_uncompressed_design(user_id)
+    if not photo:
+        photo = await database.get_user_uncompressed_photo(user_id)
+    if not photo:
+        photo = await database.get_file_by_name('default_profile_uncompressed')
+    if photo:
+        return photo.get('file_id')
+    photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    return photo
+
+
+async def format_mentor_profile_view(mentor_id: int):
+    mentor = await database.get_user_by_id(mentor_id)
+    text = mentor.get('description', "No description provided.")
+    photo = await database.get_user_compressed_design(mentor_id)
+    if not photo:
+        photo = await database.get_user_compressed_photo(mentor_id)
+    if not photo:
+        photo = await database.get_file_by_name('default_profile')
+    if photo:
+        return photo['file_id'], text
+    photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    return photo, text
 
 def format_amount(value: float) -> str:
     try:
@@ -124,3 +151,32 @@ async def send_long_message(bot, chat_id: int, text: str, **kwargs):
             text = ""
         
         await bot.send_message(chat_id, chunk, **kwargs)
+
+
+def format_design_preference(design_preference: str):
+    if design_preference == 'wheel':
+        return DESIGN_WHEEL_BUTTON
+    if design_preference == 'connection':
+        return DESIGN_CONNECTION_BUTTON
+    if design_preference == 'camera':
+        return DESIGN_CAMERA_BUTTON
+    if design_preference == 'engine':
+        return DESIGN_ENGINE_BUTTON
+    if design_preference == 'circuit':
+        return DESIGN_CIRCUIT_BUTTON
+    
+
+async def format_design_photos():
+    design_wheel = await database.get_file_by_name('design_wheel')
+    design_camera = await database.get_file_by_name('design_camera')
+    design_circuit = await database.get_file_by_name('design_circuit')
+    design_connection = await database.get_file_by_name('design_connection')
+    design_engine = await database.get_file_by_name('design_engine')
+    media = [
+        InputMediaPhoto(media=design_wheel['file_id'], caption=DESIGN_WHEEL_BUTTON),
+        InputMediaPhoto(media=design_camera['file_id'], caption=DESIGN_CONNECTION_BUTTON),
+        InputMediaPhoto(media=design_circuit['file_id'], caption=DESIGN_CIRCUIT_BUTTON),
+        InputMediaPhoto(media=design_connection['file_id'], caption=DESIGN_CONNECTION_BUTTON),
+        InputMediaPhoto(media=design_engine['file_id'], caption=DESIGN_ENGINE_BUTTON)
+    ]    
+    return media

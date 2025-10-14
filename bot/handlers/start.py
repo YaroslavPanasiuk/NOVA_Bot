@@ -7,30 +7,29 @@ from bot.db import database
 from aiogram.fsm.context import FSMContext
 from bot.handlers.participant import start_participant
 from bot.handlers.mentor import start_mentor
-from bot.utils.formatters import format_profile
-from bot.utils.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT, TECH_SUPPORT_COMMANDS, SUGGEST_ANSWER_COMMAND, CANCELED, RESTART_BUTTON, PROFILE_BUTTON, HELP_BUTTON
-from bot.config import ADMINS, TECH_SUPPORT_ID, START_VIDEO_URL
+from bot.utils.formatters import format_profile, format_profile_image
+from bot.utils.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT, TECH_SUPPORT_COMMANDS, SUGGEST_ANSWER_COMMAND, CANCELED, RESTART_BUTTON, PROFILE_BUTTON, HELP_BUTTON, CANCEL_REGISTRATION_BUTTON
+from bot.config import TECH_SUPPORT_ID
 
 router = Router()
 
 class GeneralStates(StatesGroup):
     help = State()
 
-@router.message(F.animation)
-async def video(message: Message, state: FSMContext):
-    url = message.animation.file_id
-    await message.answer(url)
-
 @router.message(Command("start"))
 async def start_cmd(message: Message):
+    user = await database.get_user_by_id(message.from_user.id)
+    if user and user.get("role") == "mentor" and user.get("status") == "approved":
+        return await message.answer(ALREADY_REGISTERED_MENTOR, show_alert=True)
+    animation = await database.get_file_by_name('start_animation')
     await message.answer_animation(
-        animation=START_VIDEO_URL,
+        animation=animation['file_id'],
         caption=WELCOME,
         reply_markup=start_kb(), 
         parse_mode="HTML"
     )
 
-@router.message(Command("cancel"))
+@router.message((F.text == "/cancel") | (F.text == CANCEL_REGISTRATION_BUTTON))
 async def cancel(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(CANCELED)
@@ -106,15 +105,20 @@ async def show_my_profile(message: Message):
 
     # Format profile
     text = await format_profile(telegram_id)
+    photo = await format_profile_image(telegram_id)
 
-    if user.get("photo_url"):
-        await message.answer_document(document=user["photo_url"], caption=text, parse_mode="HTML")
+    if photo:
+        await message.answer_document(document=photo['file_id'], caption=text, parse_mode="HTML")
     else:
         await message.answer(text, parse_mode="HTML")
 
 
 @router.message(F.text == "/menu")
 async def show_menu(message: Message):
+    user = await database.get_user_by_id(message.from_user.id)
+    if not user:
+        await message.answer(USER_NOT_REGISTERED)
+        return
     text = MENU_PROMPT
     user = await database.get_user_by_id(message.from_user.id)
     kb = menu_kb(user)
@@ -142,4 +146,9 @@ async def send_help_message(message: Message, state: FSMContext):
     await message.forward(chat_id=TECH_SUPPORT_ID)
     await message.bot.send_message(TECH_SUPPORT_ID, text=SUGGEST_ANSWER_COMMAND)
     await message.answer(HELP_REQUESTED_PROMPT)
+
+
+@router.message((F.text == "/chat_id" ))
+async def show_help(message: Message, state: FSMContext):
+    await message.answer(str(message.chat.id))
 

@@ -23,12 +23,12 @@ def mentor_action_kb(mentor_id: int):
         ]
     ])
 
-def select_user_kb(users, callback, page=0, page_size=5):
+def select_user_kb(users, callback, page=0, page_size=8):
     start = page * page_size
     end = start + page_size
     buttons = [
         [InlineKeyboardButton(
-            text=f"{user['first_name']} {user.get('last_name', '')} ({user.get('username', '')})".strip(),
+            text=f"{user['first_name']} {user.get('last_name', '')} @({user.get('username', '')})".strip(),
             callback_data=f"{callback}:{user['telegram_id']}"
         )]
         for user in users[start:end]
@@ -44,3 +44,4 @@ def select_user_kb(users, callback, page=0, page_size=5):
         buttons.append(nav_buttons)
     
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+

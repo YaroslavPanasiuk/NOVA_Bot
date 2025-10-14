@@ -1,14 +1,13 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, FSInputFile
+from aiogram.types import Message, CallbackQuery, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.db import database
-from bot.utils.formatters import format_profile
-from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb, confirm_data_processing_kb
-import re
+from bot.utils.formatters import format_profile, format_profile_image, format_design_preference, format_design_photos, format_mentor_profile_view
+from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb, confirm_data_processing_kb, confirm_kb, select_design_kb, cancel_registration_kb, menu_kb
 from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
 from bot.utils.files import reupload_as_photo
-from bot.utils.texts import PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, MANAGE_YOUR_GROUP, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT, CONFIRM_DATA_PROCESSING, PARTICIPANT_REGISTRATION_END, MENTOR_BUTTON, PARTICIPANT_NAME_PROMPT
+from bot.utils.texts import PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT, CONFIRM_DATA_PROCESSING, PARTICIPANT_REGISTRATION_END, MENTOR_BUTTON, PARTICIPANT_NAME_PROMPT, PARTICIPANT_DESIGN_PROMPT, NO_MENTOR_FOUND
 
 router = Router()
 
@@ -21,6 +20,7 @@ class ParticipantProfile(StatesGroup):
     confirm_profile = State()
     monobank_jar = State()
     confirm_data_processing = State()
+    design_preference = State()
 
 
 @router.callback_query(F.data == "role:participant")
@@ -34,15 +34,12 @@ async def start_participant(callback: CallbackQuery, state: FSMContext):
     await state.update_data(mentors=mentors, current_index=0, role="participant")
 
     first_mentor = mentors[0]
-    text = first_mentor.get("description", "No description provided.")
     kb = mentor_carousel_kb(0, len(mentors), first_mentor["telegram_id"])
 
     await state.set_state(ParticipantProfile.select_mentor)
     await callback.message.answer(PARTICIPANT_SELECT_MENTOR_PROMPT)
-    if first_mentor.get("photo_url"):
-        photo = await reupload_as_photo(callback.bot, first_mentor.get("photo_url"))
-    else:
-        photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+
+    photo, text = await format_mentor_profile_view(first_mentor['telegram_id'])
     await callback.message.answer_photo(photo=photo, caption=text, reply_markup=kb, parse_mode="HTML")
 
     await callback.answer()
@@ -59,10 +56,11 @@ async def mentor_select(callback: CallbackQuery, state: FSMContext):
     
     await callback.message.edit_reply_markup()
     mentor = await database.get_user_by_id(mentor_id)
-    text = f"{SELECTED_MENTOR} {mentor.get('default_name') or ''})!"
+    text = f"{SELECTED_MENTOR} {mentor.get('default_name') or ''}!"
     await callback.message.answer(text, parse_mode="HTML")
     await state.set_state(ParticipantProfile.name)
-    await callback.message.answer(PARTICIPANT_NAME_PROMPT)
+    kb = cancel_registration_kb()
+    await callback.message.answer(PARTICIPANT_NAME_PROMPT, reply_markup=kb)
     await callback.answer()
 
 
@@ -85,13 +83,8 @@ async def mentor_navigation(callback: CallbackQuery, state: FSMContext):
     await state.update_data(current_index=new_index)
     mentor = mentors[new_index]
 
-    text = mentor.get("description", "No description provided.")
     kb = mentor_carousel_kb(new_index, len(mentors), mentor["telegram_id"])
-
-    if mentor.get("photo_url"):
-        photo = await reupload_as_photo(callback.bot, mentor.get("photo_url"))
-    else:
-        photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    photo, text = await format_mentor_profile_view(mentor['telegram_id'])
     await callback.message.edit_media(
         media=InputMediaPhoto(media=photo, caption=text, parse_mode="HTML" ), 
         reply_markup=kb
@@ -139,17 +132,18 @@ async def participant_goal(message: Message, state: FSMContext):
     except ValueError:
         await message.answer(INVALID_NUMBER)
         return
+    participant = await database.get_user_by_id(message.from_user.id)
+    mentor = await database.get_user_by_id(participant['mentor_id'])
+    video = await database.get_file_by_name('monobank_instructions')
     await state.update_data(fundraising_goal=goal)
     await database.set_goal(telegram_id=message.from_user.id, goal=goal)
     await state.set_state(ParticipantProfile.monobank_jar)
-    await message.answer(PARTICIPANT_JAR_PROMPT)
+    await message.answer_video(video=video['file_id'], caption=PARTICIPANT_JAR_PROMPT.format(mentor_monobank_jar=mentor['jar_url']))
 
 # Monobank jar
 @router.message(ParticipantProfile.monobank_jar)
 async def mentor_goal(message: Message, state: FSMContext):
-
     valid = await monobank_jar_valid(message.text)
-
     if not valid:
         await message.answer(
             INVALID_JAR_URL
@@ -174,13 +168,27 @@ async def participant_photo_file(message: Message, state: FSMContext):
         return
 
     file_id = message.document.file_id
+    compressed_id = await reupload_as_photo(message.bot, file_id)
     await state.update_data(photo_url=file_id)
     await database.set_photo(telegram_id=message.from_user.id, file_id=file_id)
+    await database.set_photo(telegram_id=message.from_user.id, file_id=compressed_id, type='photo_compressed')
+    await state.set_state(ParticipantProfile.design_preference)
+    kb = select_design_kb()
+    media = await format_design_photos()
+    await message.answer_media_group(media=media, caption=PARTICIPANT_DESIGN_PROMPT, reply_markup=kb)
+    await message.answer(PARTICIPANT_DESIGN_PROMPT, reply_markup=kb)
 
-    text = await format_profile(message.from_user.id)
+# Design
+@router.callback_query(ParticipantProfile.design_preference, F.data.startswith("design_preference:"))
+async def participant_confirm(callback: CallbackQuery, state: FSMContext):
+    design_preference = format_design_preference(callback.data.split(":")[1])
+    await database.set_design_preference(callback.from_user.id, design_preference)
+    await callback.message.edit_text(callback.message.text + f"\n\nТи обрав: {design_preference}")
+    photo = await format_profile_image(callback.from_user.id)
+    text = await format_profile(callback.from_user.id)
     text += CONFIRM_PROFILE
     await state.set_state(ParticipantProfile.confirm_profile)
-    await message.answer_document(document=file_id, caption=text, reply_markup=participant_confirm_profile_kb(),  parse_mode="HTML")
+    await callback.message.answer_document(document=photo, caption=text, reply_markup=participant_confirm_profile_kb(),  parse_mode="HTML")
 
 # Confirm participant profile
 @router.callback_query(ParticipantProfile.confirm_profile, F.data.startswith("participant_confirm_profile:"))
@@ -206,14 +214,14 @@ async def participant_confirm(callback: CallbackQuery, state: FSMContext):
             mentor_id=data["mentor_id"],
             instagram=data["instagram"],
             fundraising_goal=data["fundraising_goal"],
-            photo_url=data["photo_url"]
         )
-        await callback.message.answer(PROFILE_SAVED_PARTICIPANT)
+        user = await database.get_user_by_id(callback.from_user.id)
+        await callback.message.answer(PROFILE_SAVED_PARTICIPANT, reply_markup=menu_kb(user))
         await callback.message.answer(PARTICIPANT_REGISTRATION_END)
         await callback.bot.send_message(data["mentor_id"], NEW_PARTICIPANT_JOINED)
         text = await format_profile(callback.from_user.id)
-        await callback.bot.send_document(data["mentor_id"], document=data["photo_url"], caption=text, parse_mode="HTML")
-        await callback.bot.send_message(data["mentor_id"], MANAGE_YOUR_GROUP)
+        kb = confirm_kb(f'approve_participant:{callback.from_user.id}')
+        await callback.bot.send_document(data["mentor_id"], document=data["photo_url"], caption=text, reply_markup=kb, parse_mode="HTML")
     else:
         await callback.message.answer(PROFILE_CANCELLED)
     await state.clear()
@@ -224,11 +232,7 @@ async def participant_confirm(callback: CallbackQuery, state: FSMContext):
 async def remove_user_cmd(message: Message):
     user = await database.get_user_by_id(message.from_user.id)
     mentor_id = user.get('mentor_id')
-    mentor = await database.get_user_by_id(mentor_id)
-    text = mentor['description']
-
-    if mentor.get("photo_url"):
-        photo = await reupload_as_photo(message.bot, mentor.get("photo_url"))
-    else:
-        photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    if not mentor_id:
+        return await message.answer(NO_MENTOR_FOUND)
+    photo, text = await format_mentor_profile_view(mentor_id)
     await message.answer_photo(photo=photo, caption=text, parse_mode="HTML")
