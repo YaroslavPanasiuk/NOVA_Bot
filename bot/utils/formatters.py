@@ -92,7 +92,7 @@ async def format_user_list() -> str:
             print("exception")
             username_str = "no_username"
         text_lines.append(
-            f"ID: {u['telegram_id']} | Name: u{['default_name']} | Fullname: {u['first_name']} {u['last_name']} | Username: {username_str} | Phone: {u['phone_number']} | Role: {u['role']}{role_str} | Registaerd at: {u['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
+            f"ID: {u['telegram_id']} | Name: {u['default_name']} | Fullname: {u['first_name']} {u['last_name']} | Username: {username_str} | Phone: {u['phone_number']} | Role: {u['role']}{role_str} | Registaerd at: {u['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
         )
 
     text = "\n".join(text_lines)
