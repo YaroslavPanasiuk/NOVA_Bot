@@ -120,9 +120,10 @@ async def format_question_list() -> str:
 
 async def format_design_msg(user) -> str:
     goal = user['fundraising_goal']
-    mentor = await database.get_user_by_id(user['mentor_id'])
-    print(mentor)
-    insta = mentor['instagram']
+    insta = ''
+    if user['role'] == 'participant':
+        mentor = await database.get_user_by_id(user['mentor_id'])
+        insta = mentor['instagram']
     if user['role'] == 'mentor':
         return FUNDRAISING_DESIGN_MENTOR.format(amount=goal)
     if goal < 2000:
