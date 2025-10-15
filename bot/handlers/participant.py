@@ -175,10 +175,13 @@ async def participant_photo_compressed(message: Message, state: FSMContext):
 async def participant_photo_file(message: Message, state: FSMContext):
 
     file_id = message.document.file_id
-    compressed_id = await reupload_as_photo(message.bot, file_id)
+    try: 
+        compressed_id = await reupload_as_photo(message.bot, file_id)
+        await database.set_compressed_photo(telegram_id=message.from_user.id, file_id=compressed_id)
+    except Exception:
+        raise
     await state.update_data(photo_url=file_id)
     await database.set_uncompressed_photo(telegram_id=message.from_user.id, file_id=file_id)
-    await database.set_compressed_photo(telegram_id=message.from_user.id, file_id=compressed_id)
     await state.set_state(ParticipantProfile.design_preference)
     kb = select_design_kb()
     media = await format_design_photos()
