@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InputMediaPhoto
+from aiogram.types import Message, CallbackQuery, InputMediaPhoto, InputMediaVideo
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.db import database
@@ -87,11 +87,17 @@ async def mentor_navigation(callback: CallbackQuery, state: FSMContext):
     mentor = mentors[new_index]
 
     kb = mentor_carousel_kb(new_index, len(mentors), mentor["telegram_id"])
-    photo, text = await format_mentor_profile_view(mentor['telegram_id'])
-    await callback.message.edit_media(
-        media=InputMediaPhoto(media=photo, caption=text, parse_mode="HTML" ), 
-        reply_markup=kb
-    )
+    photo, text, is_video = await format_mentor_profile_view(mentor['telegram_id'])
+    if is_video:   
+        await callback.message.edit_media(
+            media=InputMediaVideo(media=photo, caption=text, parse_mode="HTML" ), 
+            reply_markup=kb
+        )
+    else:
+        await callback.message.edit_media(
+            media=InputMediaPhoto(media=photo, caption=text, parse_mode="HTML" ), 
+            reply_markup=kb
+        )
     await callback.answer()
 
 # Name input

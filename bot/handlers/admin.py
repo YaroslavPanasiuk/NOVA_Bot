@@ -239,9 +239,25 @@ async def send_design_cmd(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-@router.message(AdminProfile.waiting_for_design, F.photo)
-async def photo_compressed(message: Message, state: FSMContext):
-    await message.answer(SEND_AS_FILE_WARNING)
+@router.message(AdminProfile.waiting_for_design, F.animation)
+async def photo_compressed(message: Message, state: FSMContext):    
+    file_id = message.document.file_id
+    data = await state.get_data()
+    user_id = data.get("selected_user_id")
+    print(user_id)
+    user = await database.get_user_by_id(user_id)
+    
+    if not user:
+        await message.answer(USER_NOT_FOUND)
+        return
+    await database.set_design_animation(user_id, file_id)
+    try:
+        caption = SEND_DESIGN_PROMPT
+        await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)
+        await message.bot.send_animation(chat_id=user_id, animation=file_id, caption=caption, parse_mode='HTML')
+        await message.answer("✅ Дизайн надіслано.")
+    except Exception as e:
+        await message.answer(f"⚠️ Не вдалося надіслати дизайн: {e}")
 
 
 @router.message(AdminProfile.waiting_for_design, F.document)
@@ -260,8 +276,8 @@ async def design_caption(message: Message, state: FSMContext):
         await message.answer(USER_NOT_FOUND)
         return
     compressed_id = await reupload_as_photo(message.bot, file_id)
-    await database.set_uncompressed_photo(user_id, file_id)
-    await database.set_compressed_photo(user_id, compressed_id)
+    await database.set_uncompressed_design(user_id, file_id)
+    await database.set_compressed_design(user_id, compressed_id)
     try:
         caption = SEND_DESIGN_PROMPT
         await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)
