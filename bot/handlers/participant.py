@@ -173,10 +173,6 @@ async def participant_photo_compressed(message: Message, state: FSMContext):
 # Uncompressed photo (file) handler
 @router.message(ParticipantProfile.photo, F.document)
 async def participant_photo_file(message: Message, state: FSMContext):
-    # Only accept images
-    if not message.document.mime_type.startswith("image/"):
-        await message.answer(NOT_IMAGE_FILE)
-        return
 
     file_id = message.document.file_id
     compressed_id = await reupload_as_photo(message.bot, file_id)

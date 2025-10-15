@@ -116,10 +116,6 @@ async def mentor_photo_compressed(message: Message, state: FSMContext):
   
 @router.message(MentorProfile.photo, F.document)
 async def mentor_photo_file(message: Message, state: FSMContext):
-    # Accept only images
-    if not message.document.mime_type.startswith("image/"):
-        await message.answer(NOT_IMAGE_FILE)
-        return
 
     file_id = message.document.file_id
     compressed_id = await reupload_as_photo(message.bot, file_id)
