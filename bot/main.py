@@ -16,7 +16,7 @@ async def main():
 
     await init_db()
 
-    await init_resources(bot)
+    #await init_resources(bot)
     
     await dp.start_polling(bot)
     print("Bot stopped.")
