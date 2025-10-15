@@ -314,5 +314,5 @@ DESIGN_CAMERA_BUTTON = """Камера  - зір 📷"""
 DESIGN_ENGINE_BUTTON = """Двигун - сила 🔥"""
 DESIGN_CIRCUIT_BUTTON = """Мікросхема - рішучість ⚙️"""
 
-MENTOR_JAR = """🫙 Банка ментора"""
+MENTOR_JAR = """🫙 Банка амбасадора"""
 

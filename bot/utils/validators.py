@@ -6,7 +6,7 @@ async def instagram_valid(username: str) -> bool:
     return re.fullmatch(pattern, username) is not None
 
 async def monobank_jar_valid(url: str) -> bool:
-    return url.startswith("https://send.monobank.ua/jar/") and len(url) == 39
+    return url.startswith("https://send.monobank.ua/jar/") and len(url) <= 40 and len(url) >= 37
 
 async def fundraising_goal_valid(value: str, min=1000, max=5000000) -> bool:
     print(min, max)
