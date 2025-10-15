@@ -39,7 +39,7 @@ async def start_participant(callback: CallbackQuery, state: FSMContext):
     await state.set_state(ParticipantProfile.select_mentor)
     await callback.message.answer(PARTICIPANT_SELECT_MENTOR_PROMPT)
 
-    photo, text, is_video = await format_mentor_profile_view(callback.from_user.id)
+    photo, text, is_video = await format_mentor_profile_view(first_mentor['telegram_id'])
     if is_video:
         await callback.message.answer_video(video=photo, caption=text, reply_markup=kb, parse_mode="HTML")
     else:
