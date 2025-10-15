@@ -144,14 +144,14 @@ async def mentor_photo_file(message: Message, state: FSMContext):
     except TelegramBadRequest as e:
         error_text = str(e)
         if "file is too big" in error_text:
-            await message.answer("⚠️ Ваш файл завеликий. Будь ласка, завантажте зображення менше 20 МБ.")
+            await message.answer("⚠️ Файл завеликий. Будь ласка, завантаж зображення менше 20 МБ.")
         elif "PHOTO_INVALID_DIMENSIONS" in error_text:
-            await message.answer("⚠️ Недопустимі розміри зображення. Спробуйте інше фото.")
+            await message.answer("⚠️ Недопустимі розміри зображення. Спробуй інше фото.")
         elif "IMAGE_PROCESS_FAILED" in error_text:
-            await message.answer("⚠️ Не вдалося обробити зображення. Переконайтеся, що це справжнє фото (JPEG або PNG).")
+            await message.answer("⚠️ Не вдалося обробити зображення. Переконайся, що це справжнє фото (JPEG або PNG).")
         else:
             # For any other Telegram Bad Request
-            await message.answer(f"⚠️ Помилка під час обробки зображення: {error_text}")
+            await message.answer(f"⚠️ Помилка під час обробки зображення. Спробуй інше фото")
 
     except Exception as e:
         # Catch unexpected exceptions (e.g. network, DB)
@@ -394,3 +394,5 @@ async def reject_participant(callback: CallbackQuery):
     await callback.message.edit_text(PARTICIPANT_REJECTED)
     await callback.bot.send_message(chat_id=participant_id, text=YOU_HAVE_BEEN_APPROVED_PARTICIPANT)
     await callback.answer("Rejected ❌")
+
+

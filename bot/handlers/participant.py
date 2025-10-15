@@ -177,13 +177,9 @@ async def participant_photo_file(message: Message, state: FSMContext):
     file_id = message.document.file_id
 
     try:
-        # Try reuploading the photo (may fail if invalid image)
-        compressed_id = await reupload_as_photo(message.bot, file_id)
-
         # Save both compressed and uncompressed photos
         await state.update_data(photo_url=file_id)
         await database.set_uncompressed_photo(telegram_id=message.from_user.id, file_id=file_id)
-        await database.set_compressed_photo(telegram_id=message.from_user.id, file_id=compressed_id)
 
         # Move to the next step (design selection)
         await state.set_state(ParticipantProfile.design_preference)
@@ -197,17 +193,19 @@ async def participant_photo_file(message: Message, state: FSMContext):
     except TelegramBadRequest as e:
         error_text = str(e)
         if "file is too big" in error_text:
-            await message.answer("⚠️ Ваш файл завеликий. Будь ласка, надішліть фото розміром менше 20 МБ.")
+            await message.answer("⚠️ Файл завеликий. Будь ласка, завантаж зображення менше 20 МБ.")
         elif "PHOTO_INVALID_DIMENSIONS" in error_text:
-            await message.answer("⚠️ Недопустимі розміри зображення. Спробуйте інше фото.")
+            await message.answer("⚠️ Недопустимі розміри зображення. Спробуй інше фото.")
         elif "IMAGE_PROCESS_FAILED" in error_text:
-            await message.answer("⚠️ Не вдалося обробити зображення. Переконайтеся, що це справжнє фото (JPEG або PNG).")
+            await message.answer("⚠️ Не вдалося обробити зображення. Переконайся, що це справжнє фото (JPEG або PNG).")
         else:
-            await message.answer(f"⚠️ Помилка під час обробки зображення. Будь ласка, спробуй ще раз")
+            # For any other Telegram Bad Request
+            await message.answer(f"⚠️ Помилка під час обробки зображення. Спробуй інше фото")
 
     except Exception as e:
+        # Catch unexpected exceptions (e.g. network, DB)
         await message.answer("❌ Сталася неочікувана помилка при обробці фото.")
-        print("Error during participant_photo_file:", e)
+        print("Error during mentor_photo_file:", e)
 
 # Design
 @router.callback_query(ParticipantProfile.design_preference, F.data.startswith("design_preference:"))

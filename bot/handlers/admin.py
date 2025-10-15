@@ -420,3 +420,31 @@ async def phone_verification(message: Message, state: FSMContext):
         text=SELECT_ROLE,
         reply_markup=role_choice_kb()
     )
+
+
+
+@router.message(F.text.startswith("/pending_participants_of"))
+async def list_pending_participants(message: Message):
+    if str(message.from_user.id) not in ADMINS:
+        await message.answer(NOT_ADMIN)
+        return
+    parts = message.text.strip().split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await message.answer(REMOVE_USER_USAGE)
+        return
+
+    user_id = int(parts[1]) 
+    user = await database.get_user_by_id(user_id)
+    if not (user['role'] == 'mentor' and user['status'] == 'approved'):
+        return await message.answer(NOT_ADMIN)
+
+    participants = await database.get_pending_participants(user['telegram_id'])
+
+    if not participants:
+        return
+
+    await message.answer(
+        "Учасники, які очікують затвердження:",
+        reply_markup=select_user_kb(participants, 'select_participant')
+    )
+
