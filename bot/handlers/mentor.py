@@ -128,23 +128,13 @@ async def mentor_photo_file(message: Message, state: FSMContext):
     await database.set_photo(telegram_id=message.from_user.id, file_id=compressed_id, type='photo_compressed')
 
     await database.update_status(message.from_user.id, "pending")
-    await state.set_state(MentorProfile.design_preference)
-    kb = select_design_kb()
-    media = await format_design_photos()
-    await message.answer_media_group(media=media, caption=MENTOR_DESIGN_PROMPT, reply_markup=kb)
-    await message.answer(MENTOR_DESIGN_PROMPT, reply_markup=kb)
+    await state.set_state(MentorProfile.confirm_profile_info)
 
-# Design
-@router.callback_query(MentorProfile.design_preference, F.data.startswith("design_preference:"))
-async def mentor_confirm(callback: CallbackQuery, state: FSMContext):
-    design_preference = format_design_preference(callback.data.split(":")[1])
-    await database.set_design_preference(callback.from_user.id, design_preference)
-    await callback.message.edit_text(callback.message.text + f"\n\nТи обрав: {design_preference}")
-    photo = await format_profile_image(callback.from_user.id)
-    text = await format_profile(callback.from_user.id)
+    photo = await format_profile_image(message.from_user.id)
+    text = await format_profile(message.from_user.id)
     text += CONFIRM_PROFILE
     await state.set_state(MentorProfile.confirm_profile_info)
-    await callback.message.answer_document(document=photo, caption=text, reply_markup=mentor_confirm_profile_kb(),  parse_mode="HTML")
+    await message.answer_document(document=photo, caption=text, reply_markup=mentor_confirm_profile_kb(),  parse_mode="HTML")
 
 # Confirm mentor profile
 @router.callback_query(MentorProfile.confirm_profile_info, F.data.startswith("mentor_confirm_profile:"))

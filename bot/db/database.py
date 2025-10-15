@@ -51,7 +51,7 @@ async def init_db():
             file_id TEXT PRIMARY KEY,
             type TEXT CHECK (type IN ('video','animation','photo_compressed', 'photo_uncompressed', 'design_compressed', 'design_uncompressed')),
             user_id BIGINT REFERENCES bot_users(telegram_id) ON DELETE CASCADE,
-            name TEXT DEFAULT '',
+            name TEXT UNIQUE,
             created_at TIMESTAMP DEFAULT NOW()
         );
         """)

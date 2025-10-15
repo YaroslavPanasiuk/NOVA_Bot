@@ -158,3 +158,12 @@ def select_design_kb() -> InlineKeyboardMarkup:
         ]
     )
     return keyboard
+
+def url_kb(text: str, url: str) -> InlineKeyboardMarkup:
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=text,url=url)],
+        ]
+    )
+    return keyboard

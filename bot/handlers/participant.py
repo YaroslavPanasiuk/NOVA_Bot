@@ -4,10 +4,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.db import database
 from bot.utils.formatters import format_profile, format_profile_image, format_design_preference, format_design_photos, format_mentor_profile_view
-from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb, confirm_data_processing_kb, confirm_kb, select_design_kb, cancel_registration_kb, menu_kb
+from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb, confirm_data_processing_kb, confirm_kb, select_design_kb, cancel_registration_kb, menu_kb, url_kb
 from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
 from bot.utils.files import reupload_as_photo
-from bot.utils.texts import PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT, CONFIRM_DATA_PROCESSING, PARTICIPANT_REGISTRATION_END, MENTOR_BUTTON, PARTICIPANT_NAME_PROMPT, PARTICIPANT_DESIGN_PROMPT, NO_MENTOR_FOUND
+from bot.utils.texts import PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT, CONFIRM_DATA_PROCESSING, PARTICIPANT_REGISTRATION_END, MENTOR_BUTTON, PARTICIPANT_NAME_PROMPT, PARTICIPANT_DESIGN_PROMPT, NO_MENTOR_FOUND, MENTOR_JAR
 
 router = Router()
 
@@ -134,11 +134,13 @@ async def participant_goal(message: Message, state: FSMContext):
         return
     participant = await database.get_user_by_id(message.from_user.id)
     mentor = await database.get_user_by_id(participant['mentor_id'])
+    mentor_jar_url = mentor['jar_url']
     video = await database.get_file_by_name('monobank_instructions')
     await state.update_data(fundraising_goal=goal)
     await database.set_goal(telegram_id=message.from_user.id, goal=goal)
-    await state.set_state(ParticipantProfile.monobank_jar)
-    await message.answer_video(video=video['file_id'], caption=PARTICIPANT_JAR_PROMPT.format(mentor_monobank_jar=mentor['jar_url']))
+    await state.set_state(ParticipantProfile.monobank_jar)    
+    kb = url_kb(MENTOR_JAR, mentor_jar_url)
+    await message.answer_video(video=video['file_id'], caption=PARTICIPANT_JAR_PROMPT, reply_markup=kb)
 
 # Monobank jar
 @router.message(ParticipantProfile.monobank_jar)
@@ -175,7 +177,7 @@ async def participant_photo_file(message: Message, state: FSMContext):
     await state.set_state(ParticipantProfile.design_preference)
     kb = select_design_kb()
     media = await format_design_photos()
-    await message.answer_media_group(media=media, caption=PARTICIPANT_DESIGN_PROMPT, reply_markup=kb)
+    await message.answer_media_group(media=media, reply_markup=kb)
     await message.answer(PARTICIPANT_DESIGN_PROMPT, reply_markup=kb)
 
 # Design
