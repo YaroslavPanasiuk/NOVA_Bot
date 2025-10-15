@@ -2,6 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InputMediaPhoto, InputMediaVideo
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.exceptions import TelegramBadRequest
 from bot.db import database
 from bot.utils.formatters import format_profile, format_profile_image, format_design_preference, format_design_photos, format_mentor_profile_view
 from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb, confirm_data_processing_kb, confirm_kb, select_design_kb, cancel_registration_kb, menu_kb, url_kb
@@ -173,20 +174,40 @@ async def participant_photo_compressed(message: Message, state: FSMContext):
 # Uncompressed photo (file) handler
 @router.message(ParticipantProfile.photo, F.document)
 async def participant_photo_file(message: Message, state: FSMContext):
-
     file_id = message.document.file_id
-    try: 
+
+    try:
+        # Try reuploading the photo (may fail if invalid image)
         compressed_id = await reupload_as_photo(message.bot, file_id)
+
+        # Save both compressed and uncompressed photos
+        await state.update_data(photo_url=file_id)
+        await database.set_uncompressed_photo(telegram_id=message.from_user.id, file_id=file_id)
         await database.set_compressed_photo(telegram_id=message.from_user.id, file_id=compressed_id)
-    except Exception:
-        raise
-    await state.update_data(photo_url=file_id)
-    await database.set_uncompressed_photo(telegram_id=message.from_user.id, file_id=file_id)
-    await state.set_state(ParticipantProfile.design_preference)
-    kb = select_design_kb()
-    media = await format_design_photos()
-    await message.answer_media_group(media=media, reply_markup=kb)
-    await message.answer(PARTICIPANT_DESIGN_PROMPT, reply_markup=kb)
+
+        # Move to the next step (design selection)
+        await state.set_state(ParticipantProfile.design_preference)
+        kb = select_design_kb()
+        media = await format_design_photos()
+
+        # Send design options and prompt
+        await message.answer_media_group(media=media)
+        await message.answer(PARTICIPANT_DESIGN_PROMPT, reply_markup=kb)
+
+    except TelegramBadRequest as e:
+        error_text = str(e)
+        if "file is too big" in error_text:
+            await message.answer("⚠️ Ваш файл завеликий. Будь ласка, надішліть фото розміром менше 20 МБ.")
+        elif "PHOTO_INVALID_DIMENSIONS" in error_text:
+            await message.answer("⚠️ Недопустимі розміри зображення. Спробуйте інше фото.")
+        elif "IMAGE_PROCESS_FAILED" in error_text:
+            await message.answer("⚠️ Не вдалося обробити зображення. Переконайтеся, що це справжнє фото (JPEG або PNG).")
+        else:
+            await message.answer(f"⚠️ Помилка під час обробки зображення. Будь ласка, спробуй ще раз")
+
+    except Exception as e:
+        await message.answer("❌ Сталася неочікувана помилка при обробці фото.")
+        print("Error during participant_photo_file:", e)
 
 # Design
 @router.callback_query(ParticipantProfile.design_preference, F.data.startswith("design_preference:"))

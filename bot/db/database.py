@@ -298,7 +298,7 @@ async def get_pending_mentors():
         rows = await conn.fetch("""
             SELECT *
             FROM bot_users
-            WHERE role='mentor' AND status='pending'
+            WHERE role='mentor' AND status='pending';
         """)
         return [dict(r) for r in rows]
 
@@ -310,6 +310,7 @@ async def get_pending_participants(mentor_id):
             SELECT *
             FROM bot_users
             WHERE role='participant' AND status='pending' AND mentor_id=$1
+            ORDER BY created_at;
         """, mentor_id)
         return [dict(r) for r in rows]
 

@@ -67,7 +67,7 @@ async def phone_verification(message: Message, state: FSMContext):
     await message.answer(
         RESTART_PROMPT
     )
-    await database.set_role(message.from_user.id, "pending")
+    #await database.set_role(message.from_user.id, "pending")
     await database.set_mentor(message.from_user.id, None)
     await message.bot.send_message(
         chat_id=message.from_user.id,

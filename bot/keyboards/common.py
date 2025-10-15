@@ -135,7 +135,7 @@ def menu_kb(user) -> InlineKeyboardMarkup:
        
     if str(user['telegram_id']) == TECH_SUPPORT_ID:
         buttons.append([KeyboardButton(text=LIST_QUESTIONS_BUTTON), KeyboardButton(text=ANSWER_BUTTON)])
-        buttons.append([KeyboardButton(KeyboardButton(text=SEND_MESSAGE_BUTTON))])
+        buttons.append([KeyboardButton(text=SEND_MESSAGE_BUTTON)])
     
     buttons.append([KeyboardButton(text=HELP_BUTTON)])
     print(len(buttons))

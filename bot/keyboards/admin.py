@@ -23,7 +23,7 @@ def mentor_action_kb(mentor_id: int):
         ]
     ])
 
-def select_user_kb(users, callback, page=0, page_size=8):
+def select_user_kb(users, callback, page=0, page_size=20):
     start = page * page_size
     end = start + page_size
     buttons = [

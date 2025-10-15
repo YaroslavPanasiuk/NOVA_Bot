@@ -2,6 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.exceptions import TelegramBadRequest
 from bot.db import database
 from bot.utils.formatters import format_profile, format_profile_image, format_mentor_profile_view, format_design_preference, format_design_photos
 from bot.keyboards.common import mentor_confirm_profile_kb, mentor_confirm_profile_view_kb, confirm_kb, select_design_kb, cancel_registration_kb, menu_kb
@@ -116,21 +117,46 @@ async def mentor_photo_compressed(message: Message, state: FSMContext):
   
 @router.message(MentorProfile.photo, F.document)
 async def mentor_photo_file(message: Message, state: FSMContext):
-
     file_id = message.document.file_id
-    compressed_id = await reupload_as_photo(message.bot, file_id)
-    await state.update_data(photo_url=file_id)
-    await database.set_uncompressed_photo(telegram_id=message.from_user.id, file_id=file_id)
-    await database.set_compressed_photo(telegram_id=message.from_user.id, file_id=compressed_id)
 
-    await database.update_status(message.from_user.id, "pending")
-    await state.set_state(MentorProfile.confirm_profile_info)
+    try:
+        # Try reuploading as a photo
+        compressed_id = await reupload_as_photo(message.bot, file_id)
 
-    photo = await format_profile_image(message.from_user.id)
-    text = await format_profile(message.from_user.id)
-    text += CONFIRM_PROFILE
-    await state.set_state(MentorProfile.confirm_profile_info)
-    await message.answer_document(document=photo, caption=text, reply_markup=mentor_confirm_profile_kb(),  parse_mode="HTML")
+        await state.update_data(photo_url=file_id)
+        await database.set_uncompressed_photo(telegram_id=message.from_user.id, file_id=file_id)
+        await database.set_compressed_photo(telegram_id=message.from_user.id, file_id=compressed_id)
+
+        await database.update_status(message.from_user.id, "pending")
+        await state.set_state(MentorProfile.confirm_profile_info)
+
+        photo = await format_profile_image(message.from_user.id)
+        text = await format_profile(message.from_user.id)
+        text += CONFIRM_PROFILE
+
+        await message.answer_document(
+            document=photo,
+            caption=text,
+            reply_markup=mentor_confirm_profile_kb(),
+            parse_mode="HTML"
+        )
+
+    except TelegramBadRequest as e:
+        error_text = str(e)
+        if "file is too big" in error_text:
+            await message.answer("⚠️ Ваш файл завеликий. Будь ласка, завантажте зображення менше 20 МБ.")
+        elif "PHOTO_INVALID_DIMENSIONS" in error_text:
+            await message.answer("⚠️ Недопустимі розміри зображення. Спробуйте інше фото.")
+        elif "IMAGE_PROCESS_FAILED" in error_text:
+            await message.answer("⚠️ Не вдалося обробити зображення. Переконайтеся, що це справжнє фото (JPEG або PNG).")
+        else:
+            # For any other Telegram Bad Request
+            await message.answer(f"⚠️ Помилка під час обробки зображення: {error_text}")
+
+    except Exception as e:
+        # Catch unexpected exceptions (e.g. network, DB)
+        await message.answer("❌ Сталася неочікувана помилка при обробці фото.")
+        print("Error during mentor_photo_file:", e)
 
 # Confirm mentor profile
 @router.callback_query(MentorProfile.confirm_profile_info, F.data.startswith("mentor_confirm_profile:"))
@@ -202,7 +228,10 @@ async def my_participants(message: Message):
     for p in participants:
         text += f"• {p.get('first_name', '')} {p.get('last_name', '')} @{p.get('username', '')} — Банка: {p.get('jar_url', '—')}\n"
 
-    await message.answer(text)
+    # Split long messages into chunks
+    MAX_LEN = 4000
+    for i in range(0, len(text), MAX_LEN):
+        await message.answer(text[i:i+MAX_LEN])
 
 
 @router.message((F.text == "/profile_view" ) | ( F.text == PROFILE_VIEW_BUTTON))
