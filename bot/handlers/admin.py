@@ -10,7 +10,7 @@ from aiogram.filters import Command
 from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb
 from bot.keyboards.common import role_choice_kb
 from bot.utils.formatters import format_profile, format_user_list, format_design_msg, format_profile_image
-from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED_MENTOR, YOU_HAVE_BEEN_REJECTED_MENTOR, DESIGN_CAPTION, USER_NOT_REGISTERED, SELECT_ROLE
+from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED_MENTOR, YOU_HAVE_BEEN_REJECTED_MENTOR, SEND_DESIGN_PROMPT, USER_NOT_REGISTERED, SELECT_ROLE
 from bot.utils.files import reupload_as_photo
 
 router = Router()
@@ -260,31 +260,34 @@ async def design_caption(message: Message, state: FSMContext):
         await message.answer(USER_NOT_FOUND)
         return
     compressed_id = await reupload_as_photo(message.bot, file_id)
-    await database.set_photo(user_id, file_id, 'design_uncompressed')
-    await database.set_photo(user_id, compressed_id, 'design_compressed')
-    await state.update_data(design_id=file_id)
+    await database.set_uncompressed_photo(user_id, file_id)
+    await database.set_compressed_photo(user_id, compressed_id)
+    try:
+        caption = SEND_DESIGN_PROMPT
+        await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)
+        await message.bot.send_document(chat_id=user_id, document=file_id, caption=caption, parse_mode='HTML')
+        await message.answer("✅ Дизайн надіслано.")
+    except Exception as e:
+        await message.answer(f"⚠️ Не вдалося надіслати дизайн: {e}")
 
-    caption = await format_design_msg(user)
-    await message.answer(DESIGN_CAPTION.format(user=user['username'], goal=user['fundraising_goal'], caption=caption))
-
-    await state.set_state(AdminProfile.waiting_for_design_caption)
 
 
-@router.message(AdminProfile.waiting_for_design_caption, F.text)
-async def send_design(message: Message, state: FSMContext):
+@router.message(AdminProfile.waiting_for_design, F.video)
+async def design_caption(message: Message, state: FSMContext):    
+    video_id = message.video.file_id
     data = await state.get_data()
     user_id = data.get("selected_user_id")
-    file_id = data.get("design_id")
+    print(user_id)
     user = await database.get_user_by_id(user_id)
     
     if not user:
         await message.answer(USER_NOT_FOUND)
         return
+    await database.set_design_video(user_id, video_id)
     try:
-        caption = message.text
+        caption = SEND_DESIGN_PROMPT
         await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)
-        await message.bot.send_document(chat_id=user_id, document=file_id, caption=caption)
-        await message.bot.send_message(chat_id=user_id, text=DESIGN_INSTRUCTIONS)
+        await message.bot.send_video(chat_id=user_id, video=video_id, caption=caption, parse_mode='HTML')
         await message.answer("✅ Дизайн надіслано.")
     except Exception as e:
         await message.answer(f"⚠️ Не вдалося надіслати дизайн: {e}")

@@ -124,8 +124,8 @@ async def mentor_photo_file(message: Message, state: FSMContext):
     file_id = message.document.file_id
     compressed_id = await reupload_as_photo(message.bot, file_id)
     await state.update_data(photo_url=file_id)
-    await database.set_photo(telegram_id=message.from_user.id, file_id=file_id)
-    await database.set_photo(telegram_id=message.from_user.id, file_id=compressed_id, type='photo_compressed')
+    await database.set_uncompressed_photo(telegram_id=message.from_user.id, file_id=file_id)
+    await database.set_compressed_photo(telegram_id=message.from_user.id, file_id=compressed_id)
 
     await database.update_status(message.from_user.id, "pending")
     await state.set_state(MentorProfile.confirm_profile_info)
@@ -143,10 +143,12 @@ async def mentor_confirm(callback: CallbackQuery, state: FSMContext):
     if confirm_str == "yes":
         await state.set_state(MentorProfile.confirm_profile_view)
         await callback.message.edit_caption(caption=callback.message.caption + "\n\n" + PROFILE_CONFIRMED, reply_markup=None, parse_mode="HTML")
-
-        photo, text = await format_mentor_profile_view(callback.from_user.id)
         await callback.message.answer(CONFIRM_PROFILE_VIEW)
-        await callback.message.answer_photo(photo=photo, caption=text, reply_markup=mentor_confirm_profile_view_kb(), parse_mode="HTML")
+        photo, text, is_video = await format_mentor_profile_view(callback.from_user.id)
+        if is_video:
+            await callback.message.answer_video(video=photo, caption=text, parse_mode="HTML")
+        else:
+            await callback.message.answer_photo(photo=photo, caption=text, parse_mode="HTML")
     else:
         await callback.message.answer(PROFILE_CANCELLED)
         await state.clear()
@@ -210,8 +212,11 @@ async def my_participants(message: Message):
 @router.message((F.text == "/profile_view" ) | ( F.text == PROFILE_VIEW_BUTTON))
 async def show_my_profile_view(message: Message):
     telegram_id = message.from_user.id    
-    photo, text = await format_mentor_profile_view(telegram_id)
-    await message.answer_photo(photo=photo, caption=text, parse_mode="HTML")
+    photo, text, is_video = await format_mentor_profile_view(telegram_id)
+    if is_video:
+        await message.answer_video(video=photo, caption=text, reply_markup=mentor_confirm_profile_view_kb(), parse_mode="HTML")
+    else:
+        await message.answer_photo(photo=photo, caption=text, reply_markup=mentor_confirm_profile_view_kb(), parse_mode="HTML")
 
 
 @router.message((F.text == "/change_description" ) | ( F.text == CHANGE_DESCRIPTION_BUTTON))

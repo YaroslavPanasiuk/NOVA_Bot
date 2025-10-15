@@ -36,28 +36,36 @@ async def format_profile(user_id: int) -> str:
 
 
 async def format_profile_image(user_id: int):
-    photo = await database.get_user_uncompressed_design(user_id)
-    if not photo:
-        photo = await database.get_user_uncompressed_photo(user_id)
-    if not photo:
-        photo = await database.get_file_by_name('default_profile_uncompressed')
-    if photo:
-        return photo.get('file_id')
-    photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    file_id = await database.get_user_design_video(user_id)
+    if not file_id:
+        file_id = await database.get_user_uncompressed_design(user_id)
+    if not file_id:
+        file_id = await database.get_user_uncompressed_photo(user_id)
+    if not file_id:
+        photo = await database.get_file_by_name('default_uncompressed')
+        file_id = photo.get('file_id')
+    if file_id:
+        return file_id
+    photo = FSInputFile("resources/photos/default.png", filename="no-profile-picture.png")
     return photo
 
 
 async def format_mentor_profile_view(mentor_id: int):
     mentor = await database.get_user_by_id(mentor_id)
     text = mentor.get('description', "No description provided.")
-    photo = await database.get_user_compressed_design(mentor_id)
-    if not photo:
-        photo = await database.get_user_compressed_photo(mentor_id)
-    if not photo:
-        photo = await database.get_file_by_name('default_profile')
-    if photo:
-        return photo['file_id'], text
-    photo = FSInputFile("resources/default.png", filename="no-profile-picture.png")
+    file_id = await database.get_user_design_video(mentor_id)
+    is_video = True
+    if not file_id:
+        is_video = False
+        file_id = await database.get_user_compressed_design(mentor_id)
+    if not file_id:
+        file_id = await database.get_user_compressed_photo(mentor_id)
+    if not file_id:
+        photo = await database.get_file_by_name('default_compressed')
+        file_id = photo.get('file_id')
+    if file_id:
+        return file_id, text, is_video
+    photo = FSInputFile("resources/photos/default.png", filename="no-profile-picture.png")
     return photo, text
 
 def format_amount(value: float) -> str:
@@ -168,11 +176,11 @@ def format_design_preference(design_preference: str):
     
 
 async def format_design_photos():
-    design_wheel = await database.get_file_by_name('design_wheel')
-    design_camera = await database.get_file_by_name('design_camera')
-    design_circuit = await database.get_file_by_name('design_circuit')
-    design_connection = await database.get_file_by_name('design_connection')
-    design_engine = await database.get_file_by_name('design_engine')
+    design_wheel = await database.get_file_by_name('design_wheel_compressed')
+    design_camera = await database.get_file_by_name('design_camera_compressed')
+    design_circuit = await database.get_file_by_name('design_circuit_compressed')
+    design_connection = await database.get_file_by_name('design_connection_compressed')
+    design_engine = await database.get_file_by_name('design_engine_compressed')
     media = [
         InputMediaPhoto(media=design_wheel['file_id'], caption=DESIGN_WHEEL_BUTTON),
         InputMediaPhoto(media=design_camera['file_id'], caption=DESIGN_CONNECTION_BUTTON),

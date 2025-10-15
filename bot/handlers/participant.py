@@ -39,8 +39,11 @@ async def start_participant(callback: CallbackQuery, state: FSMContext):
     await state.set_state(ParticipantProfile.select_mentor)
     await callback.message.answer(PARTICIPANT_SELECT_MENTOR_PROMPT)
 
-    photo, text = await format_mentor_profile_view(first_mentor['telegram_id'])
-    await callback.message.answer_photo(photo=photo, caption=text, reply_markup=kb, parse_mode="HTML")
+    photo, text, is_video = await format_mentor_profile_view(callback.from_user.id)
+    if is_video:
+        await callback.message.answer_video(video=photo, caption=text, reply_markup=kb, parse_mode="HTML")
+    else:
+        await callback.message.answer_photo(photo=photo, caption=text, reply_markup=kb, parse_mode="HTML")
 
     await callback.answer()
 
@@ -172,8 +175,8 @@ async def participant_photo_file(message: Message, state: FSMContext):
     file_id = message.document.file_id
     compressed_id = await reupload_as_photo(message.bot, file_id)
     await state.update_data(photo_url=file_id)
-    await database.set_photo(telegram_id=message.from_user.id, file_id=file_id)
-    await database.set_photo(telegram_id=message.from_user.id, file_id=compressed_id, type='photo_compressed')
+    await database.set_uncompressed_photo(telegram_id=message.from_user.id, file_id=file_id)
+    await database.set_compressed_photo(telegram_id=message.from_user.id, file_id=compressed_id)
     await state.set_state(ParticipantProfile.design_preference)
     kb = select_design_kb()
     media = await format_design_photos()
@@ -236,5 +239,8 @@ async def remove_user_cmd(message: Message):
     mentor_id = user.get('mentor_id')
     if not mentor_id:
         return await message.answer(NO_MENTOR_FOUND)
-    photo, text = await format_mentor_profile_view(mentor_id)
-    await message.answer_photo(photo=photo, caption=text, parse_mode="HTML")
+    photo, text, is_video = await format_mentor_profile_view(mentor_id)
+    if is_video:
+        await message.answer_video(video=photo, caption=text, parse_mode="HTML")
+    else:
+        await message.answer_photo(photo=photo, caption=text, parse_mode="HTML")

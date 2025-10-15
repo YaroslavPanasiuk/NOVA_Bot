@@ -34,6 +34,11 @@ async def init_db():
             status TEXT DEFAULT 'pending',
             mentor_id BIGINT REFERENCES bot_users(telegram_id),
             design_preference TEXT DEFAULT '',
+            photo_compressed TEXT,
+            photo_uncompressed TEXT,
+            design_compressed TEXT,
+            design_uncompressed TEXT,
+            design_video TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         );
         """)
@@ -48,10 +53,9 @@ async def init_db():
         """)
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS files (
-            file_id TEXT PRIMARY KEY,
+            name TEXT UNIQUE PRIMARY KEY,
             type TEXT CHECK (type IN ('video','animation','photo_compressed', 'photo_uncompressed', 'design_compressed', 'design_uncompressed')),
-            user_id BIGINT REFERENCES bot_users(telegram_id) ON DELETE CASCADE,
-            name TEXT UNIQUE,
+            file_id TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         );
         """)
@@ -83,17 +87,54 @@ async def set_role(telegram_id: int, role: str):
         """, role, telegram_id)
 
 
-async def set_photo(telegram_id: int, file_id: str, type='photo_uncompressed'):
+async def set_uncompressed_photo(telegram_id: int, file_id: str):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
-        await conn.execute("DELETE FROM files WHERE user_id=$1 AND type=$2", telegram_id, type)
-        await conn.execute("""
-            INSERT INTO files (file_id, type, user_id)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (file_id) DO UPDATE SET
-                type = EXCLUDED.type,
-                user_id = EXCLUDED.user_id;
-        """, file_id, type, telegram_id)
+        await conn.execute(f"""
+        UPDATE bot_users
+        SET photo_uncompressed=$1
+        WHERE telegram_id=$2;
+        """, file_id, telegram_id)
+
+
+async def set_compressed_photo(telegram_id: int, file_id: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute(f"""
+        UPDATE bot_users
+        SET photo_compressed=$1
+        WHERE telegram_id=$2;
+        """, file_id, telegram_id)
+
+
+async def set_compressed_design(telegram_id: int, file_id: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute(f"""
+        UPDATE bot_users
+        SET design_compressed=$1
+        WHERE telegram_id=$2;
+        """, file_id, telegram_id)
+
+
+async def set_uncompressed_design(telegram_id: int, file_id: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute(f"""
+        UPDATE bot_users
+        SET design_uncompressed=$1
+        WHERE telegram_id=$2;
+        """, file_id, telegram_id)
+
+
+async def set_design_video(telegram_id: int, file_id: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute(f"""
+        UPDATE bot_users
+        SET design_video=$1
+        WHERE telegram_id=$2;
+        """, file_id, telegram_id)
 
 
 
@@ -355,17 +396,17 @@ async def set_question_status(id: int, status: str):
         """, status, id)
     
 
-async def add_file(file_id: int, type: str, name="", user_id=0):
+async def add_file(file_id: int, type: str, name=""):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
         await conn.execute("""
-            INSERT INTO files (file_id, type, name, user_id)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (file_id) DO UPDATE SET
+            INSERT INTO files (file_id, type, name)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (name) DO UPDATE SET
                 type = EXCLUDED.type,
                 name = EXCLUDED.name,
-                user_id = EXCLUDED.user_id;
-        """, file_id, type, name, user_id)
+                file_id = EXCLUDED.file_id;
+            """, file_id, type, name)
 
 
 async def get_file_by_id(id:str):
@@ -385,29 +426,36 @@ async def get_file_by_name(name:str):
 async def get_user_compressed_photo(user_id:str):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
-        row = await conn.fetchrow("SELECT * FROM files WHERE user_id=$1 AND type='photo_compressed'", user_id)
-        return dict(row) if row else None
+        row = await conn.fetchrow("SELECT photo_compressed FROM bot_users WHERE telegram_id=$1", user_id)
+        return row['photo_compressed'] if row else None
 
 
 async def get_user_uncompressed_photo(user_id:str):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
-        row = await conn.fetchrow("SELECT * FROM files WHERE user_id=$1 AND type='photo_uncompressed'", user_id)
-        return dict(row) if row else None
+        row = await conn.fetchrow("SELECT photo_uncompressed FROM bot_users WHERE telegram_id=$1", user_id)
+        return row['photo_uncompressed'] if row else None
 
 
 async def get_user_compressed_design(user_id:str):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
-        row = await conn.fetchrow("SELECT * FROM files WHERE user_id=$1 AND type='design_compressed'", user_id)
-        return dict(row) if row else None
+        row = await conn.fetchrow("SELECT design_compressed FROM bot_users WHERE telegram_id=$1", user_id)
+        return row['design_compressed'] if row else None
 
 
 async def get_user_uncompressed_design(user_id:str):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
-        row = await conn.fetchrow("SELECT * FROM files WHERE user_id=$1 AND type='design_uncompressed'", user_id)
-        return dict(row) if row else None
+        row = await conn.fetchrow("SELECT design_uncompressed FROM bot_users WHERE telegram_id=$1", user_id)
+        return row['design_uncompressed'] if row else None
+
+
+async def get_user_design_video(user_id:str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT design_video FROM bot_users WHERE telegram_id=$1", user_id)
+        return row['design_video'] if row else None
 
 
 
