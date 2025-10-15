@@ -25,7 +25,7 @@ class ParticipantProfile(StatesGroup):
 
 @router.callback_query(F.data == "role:participant")
 async def start_participant(callback: CallbackQuery, state: FSMContext):
-    mentors = await database.get_mentors()
+    mentors = await database.get_approved_mentors()
     if not mentors:
         await callback.message.answer(NO_MENTORS_AVAILABLE)
         return

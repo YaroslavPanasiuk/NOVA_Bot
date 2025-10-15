@@ -133,7 +133,8 @@ async def reject_mentor(callback: CallbackQuery):
 
     mentor_id = int(callback.data.split(":")[1])
     await database.set_status(mentor_id, 'rejected')
-    await callback.message.edit_text(MENTOR_REJECTED)
+    caption = await format_profile(mentor_id) + f"\n{MENTOR_REJECTED}"
+    await callback.message.edit_caption(caption=caption)
     await callback.bot.send_message(chat_id=mentor_id, text=YOU_HAVE_BEEN_REJECTED_MENTOR)
     await callback.answer("Rejected ❌")
 
