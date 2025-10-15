@@ -182,7 +182,7 @@ async def update_status(telegram_id: int, status: str):
         await conn.execute("""
             UPDATE bot_users
             SET status = $1
-            WHERE telegram_id = $2
+            WHERE telegram_id = $2;
         """, status, telegram_id)
 
 # Save participant profile

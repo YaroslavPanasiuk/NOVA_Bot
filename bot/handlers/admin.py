@@ -1,5 +1,6 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from asyncpg.exceptions import ForeignKeyViolationError
@@ -117,7 +118,9 @@ async def approve_mentor(callback: CallbackQuery):
 
     mentor_id = int(callback.data.split(":")[1])
     await database.update_status(mentor_id, "approved")
-    await callback.message.edit_caption(MENTOR_APPROVED)
+    await callback.message.edit_reply_markup()
+    caption = await format_profile(mentor_id) + f"\n{MENTOR_APPROVED}"
+    await callback.message.edit_caption(caption=caption)
     await callback.bot.send_message(chat_id=mentor_id, text=YOU_HAVE_BEEN_APPROVED_MENTOR)
     await callback.answer("Approved ✅")
 
