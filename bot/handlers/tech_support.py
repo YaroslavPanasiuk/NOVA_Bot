@@ -3,15 +3,17 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.db import database
-from bot.config import TECH_SUPPORT_ID
+from bot.config import TECH_SUPPORT_ID, ADMINS
 from bot.utils.formatters import format_question_list, send_long_message
 from bot.keyboards.common import questions_kb
-from bot.utils.texts import NOT_ADMIN, SELECT_QUESTION, QUESTIONS_NOT_FOUND, USER_NOT_FOUND, LIST_QUESTIONS_BUTTON, ANSWER_BUTTON
+from bot.keyboards.admin import select_user_kb
+from bot.utils.texts import NOT_ADMIN, SELECT_QUESTION, QUESTIONS_NOT_FOUND, USER_NOT_FOUND, LIST_QUESTIONS_BUTTON, ANSWER_BUTTON, SEND_MESSAGE_BUTTON, USER_NOT_FOUND, SELECT_USER
 
 router = Router()
 
 class TechSupportStates(StatesGroup):
     waiting_for_answer = State()
+    waiting_for_message = State()
 
 @router.message((F.text == "/list_questions" ) | ( F.text == LIST_QUESTIONS_BUTTON))
 async def list_questions_cmd(message: Message):
@@ -25,9 +27,9 @@ async def list_questions_cmd(message: Message):
     await send_long_message(message.bot, message.from_user.id, text)
 
 
-@router.message((F.text == "/answer" | F.text == ANSWER_BUTTON))
+@router.message((F.text == "/answer") | (F.text == ANSWER_BUTTON))
 async def answer_cmd(message: Message):
-    if str(message.from_user.id) != TECH_SUPPORT_ID:
+    if str(message.from_user.id) != TECH_SUPPORT_ID and str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
     
@@ -82,5 +84,57 @@ async def send_answer(message: Message, state: FSMContext):
         await message.answer("✅ Відповідь надіслана.")
     except Exception as e:
         await message.answer(f"⚠️ Не вдалося надіслати відповідь: {e}")
+
+    await state.clear()
+
+
+@router.message((F.text == "/send_message") | (F.text == SEND_MESSAGE_BUTTON))
+async def send_message_cmd(message: Message):
+    if str(message.from_user.id) != TECH_SUPPORT_ID and str(message.from_user.id) not in ADMINS:
+        await message.answer(NOT_ADMIN)
+        return
+    
+    users = await database.get_all_users()
+    if not users:
+        await message.answer(USER_NOT_FOUND)
+        return
+    kb = select_user_kb(users, 'send_message')
+    await message.answer(SELECT_USER, reply_markup=kb)
+
+
+@router.callback_query(F.data.startswith("send_message:"))
+async def message_text(callback: CallbackQuery, state: FSMContext):
+    user_id = int(callback.data.split(":")[1])
+    user = await database.get_user_by_id(user_id)
+    await state.update_data(selected_user_id=user_id)
+    await state.set_state(TechSupportStates.waiting_for_message)
+    await callback.message.answer(f"✍️ Напиши текст повідомлення для @{user['username']}")
+    await callback.answer()
+
+
+@router.message(TechSupportStates.waiting_for_message, F.text)
+async def send_message(message: Message, state: FSMContext):
+    data = await state.get_data()
+    user_id = data.get("selected_user_id")
+    if not user_id:
+        await message.answer("⚠️ Обери запитання.")
+        await state.clear()
+        return
+
+    user = await database.get_user_by_id(user_id)
+    
+    if not user:
+        await message.answer(USER_NOT_FOUND)
+        return
+
+    try:
+        await message.bot.send_message(
+            user_id,
+            message.text,
+            parse_mode="HTML"
+        )
+        await message.answer("✅ Повідомлення надіслано.")
+    except Exception as e:
+        await message.answer(f"⚠️ Не вдалося надіслати повідомлення: {e}")
 
     await state.clear()
