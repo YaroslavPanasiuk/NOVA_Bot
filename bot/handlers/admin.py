@@ -148,7 +148,7 @@ async def remove_user_cmd(message: Message):
         return
     
     users = await database.get_all_users()
-    kb = select_user_kb(users, "delete_user", page_size=10)
+    kb = select_user_kb(users, "delete_user", page_size=20)
     await message.answer(SELECT_USER, reply_markup=kb)
 
 
@@ -167,7 +167,7 @@ async def remove_user_reply_cmd(callback: CallbackQuery):
     try:
         await database.delete_user(user_id)
         users = await database.get_all_users()
-        kb = select_user_kb(users, "delete_user")
+        kb = select_user_kb(users, "delete_user", page_size=20)
         print(kb)
         await callback.message.edit_reply_markup(reply_markup=kb)
         await callback.answer(USER_REMOVED)
@@ -184,7 +184,7 @@ async def user_profile_cmd(message: Message, state: FSMContext):
         return
     
     users = await database.get_all_users()
-    kb = select_user_kb(users, "user_profile", page_size=10)
+    kb = select_user_kb(users, "user_profile", page_size=20)
     await message.answer(SELECT_USER, reply_markup=kb)
     await message.answer(ENTER_USERNAME)
     await state.set_state(AdminProfile.waiting_for_username)
@@ -194,6 +194,9 @@ async def user_profile_cmd(message: Message, state: FSMContext):
 async def user_profile_reply_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
+        return
+    if not text.startswith('@'):
+        await state.clear()
         return
 
     username = message.text.strip()
@@ -237,7 +240,7 @@ async def answer_cmd(message: Message, state: FSMContext):
         return
     
     users = await database.get_all_users()
-    kb = select_user_for_design_kb(users, "design")
+    kb = select_user_for_design_kb(users, "design", page_size=20)
     await message.answer(SELECT_USER, reply_markup=kb)
     await message.answer(ENTER_USERNAME)
     await state.set_state(AdminProfile.username_for_design)
@@ -247,6 +250,9 @@ async def answer_cmd(message: Message, state: FSMContext):
 async def design_profile_reply_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
+        return
+    if not text.startswith('@'):
+        await state.clear()
         return
 
     username = message.text.strip()
@@ -268,7 +274,7 @@ async def paginate_users(callback: CallbackQuery):
     callback_data = callback.data.split(":")[1]
     page = int(callback.data.split(":")[2])
     users = await database.get_all_users()
-    kb = select_user_for_design_kb(users, callback=callback_data, page=page)
+    kb = select_user_for_design_kb(users, callback=callback_data, page=page, page_size=20)
     await callback.message.edit_reply_markup(reply_markup=kb)
     await callback.answer()
 
@@ -278,7 +284,7 @@ async def paginate_users(callback: CallbackQuery):
     callback_data = callback.data.split(":")[1]
     page = int(callback.data.split(":")[2])
     users = await database.get_all_users()
-    kb = select_user_kb(users, callback=callback_data, page=page, page_size=10)
+    kb = select_user_kb(users, callback=callback_data, page=page, page_size=20)
     await callback.message.edit_reply_markup(reply_markup=kb)
     await callback.answer()
 
@@ -288,7 +294,7 @@ async def paginate_users(callback: CallbackQuery):
     callback_data = callback.data.split(":")[1]
     page = int(callback.data.split(":")[2])
     users = await database.get_all_users()
-    kb = select_user_kb(users, callback=callback_data, page=page, page_size=10)
+    kb = select_user_kb(users, callback=callback_data, page=page, page_size=20)
     await callback.message.edit_reply_markup(reply_markup=kb)
     await callback.answer()
 
