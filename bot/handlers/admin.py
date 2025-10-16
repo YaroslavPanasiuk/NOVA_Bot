@@ -283,6 +283,16 @@ async def paginate_users(callback: CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query(F.data.startswith("page:delete_user"))
+async def paginate_users(callback: CallbackQuery):
+    callback_data = callback.data.split(":")[1]
+    page = int(callback.data.split(":")[2])
+    users = await database.get_all_users()
+    kb = select_user_kb(users, callback=callback_data, page=page, page_size=10)
+    await callback.message.edit_reply_markup(reply_markup=kb)
+    await callback.answer()
+
+
 @router.callback_query(F.data.startswith("design:"))
 async def send_design_cmd(callback: CallbackQuery, state: FSMContext):
     user_id = int(callback.data.split(":")[1])
