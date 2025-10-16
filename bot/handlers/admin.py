@@ -195,8 +195,8 @@ async def user_profile_reply_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
-    if not text.startswith('@'):
-        await message.answer('Напиши це ще раз, будь ласка')
+    if not message.text.startswith('@'):
+        await message.answer('Щось не почув тебе. Можеш повторити?')
         await state.clear()
         return
 
@@ -252,8 +252,8 @@ async def design_profile_reply_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
-    if not text.startswith('@'):
-        await message.answer('Напиши це ще раз, будь ласка')
+    if not message.text.startswith('@'):
+        await message.answer('Щось не почув тебе. Можеш повторити?')
         await state.clear()
         return
 
