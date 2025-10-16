@@ -23,6 +23,7 @@ class AdminProfile(StatesGroup):
     add_video = State()
     add_animation = State()
     waiting_for_username = State()
+    username_for_design = State()
 
 @router.message((F.text == "/list_users" ) | ( F.text == LIST_USERS_BUTTON))
 async def list_users_cmd(message: Message):
@@ -230,7 +231,7 @@ async def user_profile_reply_cmd(callback: CallbackQuery):
 
 
 @router.message((F.text == "/send_design" ) | ( F.text == SEND_DESIGN_BUTTON))
-async def answer_cmd(message: Message):
+async def answer_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
@@ -238,6 +239,28 @@ async def answer_cmd(message: Message):
     users = await database.get_all_users()
     kb = select_user_for_design_kb(users, "design")
     await message.answer(SELECT_USER, reply_markup=kb)
+    await message.answer(ENTER_USERNAME)
+    await state.set_state(AdminProfile.username_for_design)
+
+
+@router.message(AdminProfile.username_for_design, F.text)
+async def design_profile_reply_cmd(message: Message, state: FSMContext):
+    if str(message.from_user.id) not in ADMINS:
+        await message.answer(NOT_ADMIN)
+        return
+
+    username = message.text.strip()
+    username = username.lstrip('@')
+
+    user = await database.get_user_by_username(username)
+    user_id = user['telegram_id']
+
+    await state.update_data(selected_user_id=user_id)
+    await state.set_state(AdminProfile.waiting_for_design)
+    photo = await format_profile_image(user_id)
+    text = await format_profile(user_id)
+    await message.answer_document(document=photo, caption=text)
+    await message.answer(f"✍️ Надішли дизайн поста у форматі файлу для @{user['username']} (відмінити - /cancel)")
 
 
 @router.callback_query(F.data.startswith("page:"))
@@ -303,6 +326,8 @@ async def design_caption(message: Message, state: FSMContext):
     compressed_id = await reupload_as_photo(message.bot, file_id)
     await database.set_uncompressed_design(user_id, file_id)
     await database.set_compressed_design(user_id, compressed_id)
+    await database.set_design_video(user_id, None)
+    await database.set_design_animation(user_id, None)
     try:
         caption = SEND_DESIGN_PROMPT
         await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)
@@ -325,6 +350,7 @@ async def design_caption(message: Message, state: FSMContext):
         await message.answer(USER_NOT_FOUND)
         return
     await database.set_design_video(user_id, video_id)
+    await database.set_design_animation(user_id, None)
     try:
         caption = SEND_DESIGN_PROMPT
         await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)

@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InputMediaPhoto, InputMediaVideo
+from aiogram.types import Message, CallbackQuery, InputMediaPhoto, InputMediaVideo, InputMediaAnimation
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramBadRequest
@@ -40,10 +40,12 @@ async def start_participant(callback: CallbackQuery, state: FSMContext):
     await state.set_state(ParticipantProfile.select_mentor)
     await callback.message.answer(PARTICIPANT_SELECT_MENTOR_PROMPT)
 
-    photo, text, is_video = await format_mentor_profile_view(first_mentor['telegram_id'])
-    if is_video:
+    photo, text, type = await format_mentor_profile_view(first_mentor['telegram_id'])
+    if type == 'animation':
+        await callback.message.answer_animation(animation=photo, caption=text, reply_markup=kb, parse_mode="HTML")
+    if type == 'video':
         await callback.message.answer_video(video=photo, caption=text, reply_markup=kb, parse_mode="HTML")
-    else:
+    if type == 'photo':
         await callback.message.answer_photo(photo=photo, caption=text, reply_markup=kb, parse_mode="HTML")
 
     await callback.answer()
@@ -88,17 +90,13 @@ async def mentor_navigation(callback: CallbackQuery, state: FSMContext):
     mentor = mentors[new_index]
 
     kb = mentor_carousel_kb(new_index, len(mentors), mentor["telegram_id"])
-    photo, text, is_video = await format_mentor_profile_view(mentor['telegram_id'])
-    if is_video:   
-        await callback.message.edit_media(
-            media=InputMediaVideo(media=photo, caption=text, parse_mode="HTML" ), 
-            reply_markup=kb
-        )
-    else:
-        await callback.message.edit_media(
-            media=InputMediaPhoto(media=photo, caption=text, parse_mode="HTML" ), 
-            reply_markup=kb
-        )
+    photo, text, type = await format_mentor_profile_view(mentor['telegram_id'])
+    if type == 'animation':
+        await callback.message.edit_media(media=InputMediaAnimation(media=photo, caption=text, parse_mode="HTML" ), reply_markup=kb)
+    if type == 'video':
+        await callback.message.edit_media(media=InputMediaVideo(media=photo, caption=text, parse_mode="HTML" ), reply_markup=kb)
+    if type == 'photo':
+        await callback.message.edit_media(media=InputMediaPhoto(media=photo, caption=text, parse_mode="HTML" ), reply_markup=kb)
     await callback.answer()
 
 # Name input
@@ -263,8 +261,10 @@ async def remove_user_cmd(message: Message):
     mentor_id = user.get('mentor_id')
     if not mentor_id:
         return await message.answer(NO_MENTOR_FOUND)
-    photo, text, is_video = await format_mentor_profile_view(mentor_id)
-    if is_video:
-        await message.answer_video(video=photo, caption=text, parse_mode="HTML")
-    else:
-        await message.answer_photo(photo=photo, caption=text, parse_mode="HTML")
+    photo, text, type = await format_mentor_profile_view(mentor_id)
+    if type == 'animation':
+        await message.answer_animation(animation=photo, caption=text,parse_mode="HTML")
+    if type == 'video':
+        await message.answer_video(video=photo, caption=text,parse_mode="HTML")
+    if type == 'photo':
+        await message.answer_photo(photo=photo, caption=text,parse_mode="HTML")

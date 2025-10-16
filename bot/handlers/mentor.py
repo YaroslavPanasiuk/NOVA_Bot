@@ -166,11 +166,14 @@ async def mentor_confirm(callback: CallbackQuery, state: FSMContext):
         await state.set_state(MentorProfile.confirm_profile_view)
         await callback.message.edit_caption(caption=callback.message.caption + "\n\n" + PROFILE_CONFIRMED, reply_markup=None, parse_mode="HTML")
         await callback.message.answer(CONFIRM_PROFILE_VIEW)
-        photo, text, is_video = await format_mentor_profile_view(callback.from_user.id)
-        if is_video:
-            await callback.message.answer_video(video=photo, caption=text, parse_mode="HTML")
-        else:
-            await callback.message.answer_photo(photo=photo, caption=text, parse_mode="HTML")
+        photo, text, type = await format_mentor_profile_view(callback.from_user.id)
+        kb = mentor_confirm_profile_kb()
+        if type == 'animation':
+            await callback.message.answer_animation(animation=photo, caption=text, reply_markup=kb, parse_mode="HTML")
+        if type == 'video':
+            await callback.message.answer_video(video=photo, caption=text, reply_markup=kb, parse_mode="HTML")
+        if type == 'photo':
+            await callback.message.answer_photo(photo=photo, caption=text, reply_markup=kb, parse_mode="HTML")
     else:
         await callback.message.answer(PROFILE_CANCELLED)
         await state.clear()
@@ -237,11 +240,14 @@ async def my_participants(message: Message):
 @router.message((F.text == "/profile_view" ) | ( F.text == PROFILE_VIEW_BUTTON))
 async def show_my_profile_view(message: Message):
     telegram_id = message.from_user.id    
-    photo, text, is_video = await format_mentor_profile_view(telegram_id)
-    if is_video:
-        await message.answer_video(video=photo, caption=text, reply_markup=mentor_confirm_profile_view_kb(), parse_mode="HTML")
-    else:
-        await message.answer_photo(photo=photo, caption=text, reply_markup=mentor_confirm_profile_view_kb(), parse_mode="HTML")
+    photo, text, type = await format_mentor_profile_view(telegram_id)
+    kb = mentor_confirm_profile_view_kb()
+    if type == 'animation':
+        await message.answer_animation(animation=photo, caption=text, reply_markup=kb, parse_mode="HTML")
+    if type == 'video':
+        await message.answer_video(video=photo, caption=text, reply_markup=kb, parse_mode="HTML")
+    if type == 'photo':
+        await message.answer_photo(photo=photo, caption=text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.message((F.text == "/change_description" ) | ( F.text == CHANGE_DESCRIPTION_BUTTON))
@@ -378,7 +384,6 @@ async def approve_participant(callback: CallbackQuery):
     participant_id = int(callback.data.split(":")[1])
     await database.update_status(participant_id, "approved")
     await database.update_created_at(participant_id)
-    await callback.message.edit_text(PARTICIPANT_APPROVED)
     await callback.bot.send_message(chat_id=participant_id, text=YOU_HAVE_BEEN_APPROVED_PARTICIPANT)
     await callback.answer("Approved ✅")
 
@@ -392,7 +397,6 @@ async def reject_participant(callback: CallbackQuery):
 
     participant_id = int(callback.data.split(":")[1])
     await database.update_status(participant_id, "declined")
-    await callback.message.edit_text(PARTICIPANT_REJECTED)
     await callback.bot.send_message(chat_id=participant_id, text=YOU_HAVE_BEEN_APPROVED_PARTICIPANT)
     await callback.answer("Rejected ❌")
 

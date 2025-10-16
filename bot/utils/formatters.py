@@ -36,7 +36,9 @@ async def format_profile(user_id: int) -> str:
 
 
 async def format_profile_image(user_id: int):
-    file_id = await database.get_user_design_video(user_id)
+    file_id = await database.get_user_design_animation(user_id)
+    if not file_id:
+        file_id = await database.get_user_design_video(user_id)
     if not file_id:
         file_id = await database.get_user_uncompressed_design(user_id)
     if not file_id:
@@ -53,10 +55,13 @@ async def format_profile_image(user_id: int):
 async def format_mentor_profile_view(mentor_id: int):
     mentor = await database.get_user_by_id(mentor_id)
     text = mentor.get('description', "No description provided.")
-    file_id = await database.get_user_design_video(mentor_id)
-    is_video = True
+    file_id = await database.get_user_design_animation(mentor_id)
+    type = 'animation'
     if not file_id:
-        is_video = False
+        file_id = await database.get_user_design_video(mentor_id)
+        type = 'video'
+    if not file_id:
+        type = 'photo'
         file_id = await database.get_user_compressed_design(mentor_id)
     if not file_id:
         file_id = await database.get_user_compressed_photo(mentor_id)
@@ -64,7 +69,7 @@ async def format_mentor_profile_view(mentor_id: int):
         photo = await database.get_file_by_name('default_compressed')
         file_id = photo.get('file_id')
     if file_id:
-        return file_id, text, is_video
+        return file_id, text, type
     photo = FSInputFile("resources/photos/default.png", filename="no-profile-picture.png")
     return photo, text
 

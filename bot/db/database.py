@@ -39,6 +39,7 @@ async def init_db():
             design_compressed TEXT,
             design_uncompressed TEXT,
             design_video TEXT,
+            design_animation TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         );
         """)
@@ -133,6 +134,16 @@ async def set_design_video(telegram_id: int, file_id: str):
         await conn.execute(f"""
         UPDATE bot_users
         SET design_video=$1
+        WHERE telegram_id=$2;
+        """, file_id, telegram_id)
+
+
+async def set_design_animation(telegram_id: int, file_id: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute(f"""
+        UPDATE bot_users
+        SET design_animation=$1
         WHERE telegram_id=$2;
         """, file_id, telegram_id)
 
@@ -486,4 +497,11 @@ async def get_user_design_video(user_id:str):
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
         row = await conn.fetchrow("SELECT design_video FROM bot_users WHERE telegram_id=$1", user_id)
         return row['design_video'] if row else None
+
+
+async def get_user_design_animation(user_id:str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT design_animation FROM bot_users WHERE telegram_id=$1", user_id)
+        return row['design_animation'] if row else None
 
