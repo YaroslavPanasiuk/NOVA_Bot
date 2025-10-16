@@ -4,10 +4,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.db import database
 from bot.config import TECH_SUPPORT_ID, ADMINS
-from bot.utils.formatters import format_question_list, send_long_message
-from bot.keyboards.common import questions_kb
+from bot.utils.formatters import format_question_list, send_long_message, format_profile, format_profile_image
+from bot.keyboards.common import questions_kb, text_kb
 from bot.keyboards.admin import select_user_kb
-from bot.utils.texts import NOT_ADMIN, SELECT_QUESTION, QUESTIONS_NOT_FOUND, USER_NOT_FOUND, LIST_QUESTIONS_BUTTON, ANSWER_BUTTON, SEND_MESSAGE_BUTTON, USER_NOT_FOUND, SELECT_USER
+from bot.utils.texts import NOT_ADMIN, SELECT_QUESTION, UNFINISHED_REGISTRATIONS_BUTTON, QUESTIONS_NOT_FOUND, USER_NOT_FOUND, LIST_QUESTIONS_BUTTON, ANSWER_BUTTON, SEND_MESSAGE_BUTTON, USER_NOT_FOUND, SELECT_USER
 
 router = Router()
 
@@ -138,3 +138,39 @@ async def send_message(message: Message, state: FSMContext):
         await message.answer(f"⚠️ Не вдалося надіслати повідомлення: {e}")
 
     await state.clear()
+
+
+@router.message((F.text == ("/unfinished_registrations")) | (F.text == UNFINISHED_REGISTRATIONS_BUTTON))
+async def list_unfinished_registrations(message: Message):
+    if str(message.from_user.id) not in ADMINS or str(message.from_user.id) != TECH_SUPPORT_ID:
+        await message.answer(NOT_ADMIN)
+        return
+    users = await database.get_unfinished_registrations()
+    
+    if not users:
+        await message.answer(USER_NOT_FOUND)
+        return
+    
+    kb = select_user_kb(users, "remind_to_register")
+    await message.answer(
+        "Учасники, які не завершили реєстрацію:",
+        reply_markup=kb
+    )
+
+
+@router.callback_query(F.data.startswith("remind_to_register:"))
+async def message_text(callback: CallbackQuery, state: FSMContext):
+    user_id = int(callback.data.split(":")[1])
+    await state.update_data(selected_user_id=user_id)
+    kb = text_kb("Написати повідомлення", f'send_message:{user_id}')
+    
+    text = await format_profile(user_id)
+    document = await format_profile_image(user_id)
+
+    await callback.message.answer_document(
+        document=document,
+        caption=text,
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
+    await callback.answer()

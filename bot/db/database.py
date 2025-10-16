@@ -505,3 +505,17 @@ async def get_user_design_animation(user_id:str):
         row = await conn.fetchrow("SELECT design_animation FROM bot_users WHERE telegram_id=$1", user_id)
         return row['design_animation'] if row else None
 
+
+async def get_unfinished_registrations():
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        rows = await conn.fetch("""SELECT * FROM bot_users WHERE 
+            default_name = '' OR
+            instagram = '' OR
+            fundraising_goal = 0 OR
+            jar_url = '' OR
+            photo_uncompressed IS NULL OR
+            design_preference = '';                  
+            """)
+        return [dict(r) for r in rows]
+

@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from asyncpg.exceptions import ForeignKeyViolationError
 from bot.db import database
-from bot.config import ADMINS, DB_CHAT_ID
+from bot.config import ADMINS, DB_CHAT_ID, TECH_SUPPORT_ID
 from aiogram.filters import Command
 from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb, select_user_for_design_kb
 from bot.keyboards.common import role_choice_kb
@@ -508,5 +508,6 @@ async def list_pending_participants(message: Message):
         "Учасники, які очікують затвердження:",
         reply_markup=select_user_kb(participants, 'select_participant')
     )
+
 
 
