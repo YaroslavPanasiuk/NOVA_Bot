@@ -102,6 +102,16 @@ async def send_message_cmd(message: Message):
     await message.answer(SELECT_USER, reply_markup=kb)
 
 
+@router.callback_query(F.data.startswith("page:send_message"))
+async def paginate_users(callback: CallbackQuery):
+    callback_data = callback.data.split(":")[1]
+    page = int(callback.data.split(":")[2])
+    users = await database.get_all_users()
+    kb = select_user_kb(users, callback=callback_data, page=page, page_size=10)
+    await callback.message.edit_reply_markup(reply_markup=kb)
+    await callback.answer()
+
+
 @router.callback_query(F.data.startswith("send_message:"))
 async def message_text(callback: CallbackQuery, state: FSMContext):
     user_id = int(callback.data.split(":")[1])
@@ -142,7 +152,7 @@ async def send_message(message: Message, state: FSMContext):
 
 @router.message((F.text == ("/unfinished_registrations")) | (F.text == UNFINISHED_REGISTRATIONS_BUTTON))
 async def list_unfinished_registrations(message: Message):
-    if str(message.from_user.id) not in ADMINS or str(message.from_user.id) != TECH_SUPPORT_ID:
+    if str(message.from_user.id) not in ADMINS and str(message.from_user.id) != TECH_SUPPORT_ID:
         await message.answer(NOT_ADMIN)
         return
     users = await database.get_unfinished_registrations()
