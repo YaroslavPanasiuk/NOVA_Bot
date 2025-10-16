@@ -196,6 +196,7 @@ async def user_profile_reply_cmd(message: Message, state: FSMContext):
         await message.answer(NOT_ADMIN)
         return
     if not text.startswith('@'):
+        await message.answer('Напиши це ще раз, будь ласка')
         await state.clear()
         return
 
@@ -252,6 +253,7 @@ async def design_profile_reply_cmd(message: Message, state: FSMContext):
         await message.answer(NOT_ADMIN)
         return
     if not text.startswith('@'):
+        await message.answer('Напиши це ще раз, будь ласка')
         await state.clear()
         return
 
