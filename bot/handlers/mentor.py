@@ -377,6 +377,7 @@ async def approve_participant(callback: CallbackQuery):
 
     participant_id = int(callback.data.split(":")[1])
     await database.update_status(participant_id, "approved")
+    await database.update_created_at(participant_id)
     await callback.message.edit_text(PARTICIPANT_APPROVED)
     await callback.bot.send_message(chat_id=participant_id, text=YOU_HAVE_BEEN_APPROVED_PARTICIPANT)
     await callback.answer("Approved ✅")

@@ -198,6 +198,16 @@ async def set_goal(telegram_id: int, goal: str):
         """, goal, telegram_id)
 
 
+async def update_created_at(telegram_id: int):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("""
+        UPDATE bot_users
+        SET created_at=NOW()
+        WHERE telegram_id=$1;
+        """, telegram_id)
+
+
 async def set_mentor(telegram_id: int, mentor: int):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
@@ -457,7 +467,4 @@ async def get_user_design_video(user_id:str):
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
         row = await conn.fetchrow("SELECT design_video FROM bot_users WHERE telegram_id=$1", user_id)
         return row['design_video'] if row else None
-
-
-
 
