@@ -28,7 +28,7 @@ def select_user_kb(users, callback, page=0, page_size=20):
     end = start + page_size
     buttons = [
         [InlineKeyboardButton(
-            text=f"{user['first_name']} {user.get('last_name', '')} @({user.get('username', '')})".strip(),
+            text=f"{user['first_name']} {user.get('last_name', '')} (@{user.get('username', '')})".strip(),
             callback_data=f"{callback}:{user['telegram_id']}"
         )]
         for user in users[start:end]
@@ -54,7 +54,7 @@ def select_user_for_design_kb(users, callback, page=0, page_size=20):
         if user['design_uncompressed'] or user['design_compressed'] or user['design_video']:
             appendix = "✅"
         buttons.append([InlineKeyboardButton(
-            text=f"{user['first_name']} {user.get('last_name', '')} @({user.get('username', '')}) {appendix}".strip(),
+            text=f"{user['first_name']} {user.get('last_name', '')} (@{user.get('username', '')}) {appendix}".strip(),
             callback_data=f"{callback}:{user['telegram_id']}"
         )])
    
