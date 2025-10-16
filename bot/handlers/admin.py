@@ -148,7 +148,7 @@ async def remove_user_cmd(message: Message):
         return
     
     users = await database.get_all_users()
-    kb = select_user_kb(users, "delete_user")
+    kb = select_user_kb(users, "delete_user", page_size=10)
     await message.answer(SELECT_USER, reply_markup=kb)
 
 

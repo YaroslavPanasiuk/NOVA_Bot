@@ -98,7 +98,7 @@ async def send_message_cmd(message: Message):
     if not users:
         await message.answer(USER_NOT_FOUND)
         return
-    kb = select_user_kb(users, 'send_message')
+    kb = select_user_kb(users, 'send_message', page_size=10)
     await message.answer(SELECT_USER, reply_markup=kb)
 
 

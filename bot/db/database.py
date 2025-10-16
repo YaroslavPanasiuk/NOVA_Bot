@@ -514,7 +514,7 @@ async def get_unfinished_registrations():
             instagram = '' OR
             fundraising_goal = 0 OR
             jar_url = '' OR
-            photo_uncompressed IS NULL OR
+            photo_uncompressed IS NULL OR 
             design_preference = '';                  
             """)
         return [dict(r) for r in rows]
