@@ -308,7 +308,7 @@ async def get_users_with_no_design():
         rows = await conn.fetch("""
             SELECT *
             FROM bot_users
-            WHERE design_uncompressed IS NULL
+            WHERE design_uncompressed IS NULL AND design_video IS NULL
             ORDER BY created_at;
         """)
         return [dict(r) for r in rows]

@@ -45,3 +45,27 @@ def select_user_kb(users, callback, page=0, page_size=20):
     
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+def select_user_for_design_kb(users, callback, page=0, page_size=20):
+    start = page * page_size
+    end = start + page_size
+    buttons = []
+    for user in users:
+        appendix = ""
+        if user['design_uncompressed'] or user['design_compressed'] or user['design_video']:
+            appendix = "✅"
+        buttons.append([InlineKeyboardButton(
+            text=f"{user['first_name']} {user.get('last_name', '')} @({user.get('username', '')}) {appendix}".strip(),
+            callback_data=f"{callback}:{user['telegram_id']}"
+        )])
+   
+    # Navigation buttons
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton(text="⬅️ Prev", callback_data=f"page:{callback}:{page-1}"))
+    if end < len(users):
+        nav_buttons.append(InlineKeyboardButton(text="➡️ Next", callback_data=f"page:{callback}:{page+1}"))
+    if nav_buttons:
+        buttons.append(nav_buttons)
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+

@@ -7,7 +7,7 @@ from asyncpg.exceptions import ForeignKeyViolationError
 from bot.db import database
 from bot.config import ADMINS, DB_CHAT_ID
 from aiogram.filters import Command
-from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb
+from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb, select_user_for_design_kb
 from bot.keyboards.common import role_choice_kb
 from bot.utils.formatters import format_profile, format_user_list, format_design_msg, format_profile_image
 from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, ENTER_USERNAME, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED_MENTOR, YOU_HAVE_BEEN_REJECTED_MENTOR, SEND_DESIGN_PROMPT, USER_NOT_REGISTERED, SELECT_ROLE
@@ -235,8 +235,8 @@ async def answer_cmd(message: Message):
         await message.answer(NOT_ADMIN)
         return
     
-    users = await database.get_users_with_no_design()
-    kb = select_user_kb(users, "design")
+    users = await database.get_all_users()
+    kb = select_user_for_design_kb(users, "design")
     await message.answer(SELECT_USER, reply_markup=kb)
 
 
@@ -245,7 +245,7 @@ async def paginate_users(callback: CallbackQuery):
     callback_data = callback.data.split(":")[1]
     page = int(callback.data.split(":")[2])
     users = await database.get_all_users()
-    kb = select_user_kb(users, callback=callback_data, page=page)
+    kb = select_user_for_design_kb(users, callback=callback_data, page=page)
     await callback.message.edit_reply_markup(reply_markup=kb)
     await callback.answer()
 
