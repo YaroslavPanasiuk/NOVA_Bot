@@ -10,7 +10,7 @@ from aiogram.filters import Command
 from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb
 from bot.keyboards.common import role_choice_kb
 from bot.utils.formatters import format_profile, format_user_list, format_design_msg, format_profile_image
-from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, REGISTERED_USERS_HEADER, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED_MENTOR, YOU_HAVE_BEEN_REJECTED_MENTOR, SEND_DESIGN_PROMPT, USER_NOT_REGISTERED, SELECT_ROLE
+from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, ENTER_USERNAME, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED_MENTOR, YOU_HAVE_BEEN_REJECTED_MENTOR, SEND_DESIGN_PROMPT, USER_NOT_REGISTERED, SELECT_ROLE
 from bot.utils.files import reupload_as_photo
 
 router = Router()
@@ -22,6 +22,7 @@ class AdminProfile(StatesGroup):
     add_uncompressed_photo = State()
     add_video = State()
     add_animation = State()
+    waiting_for_username = State()
 
 @router.message((F.text == "/list_users" ) | ( F.text == LIST_USERS_BUTTON))
 async def list_users_cmd(message: Message):
@@ -176,14 +177,38 @@ async def remove_user_reply_cmd(callback: CallbackQuery):
 
 
 @router.message((F.text.startswith("/user_profile") ) | ( F.text == USER_PROFILE_BUTTON))
-async def user_profile_cmd(message: Message):
+async def user_profile_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
     
     users = await database.get_all_users()
-    kb = select_user_kb(users, "user_profile")
+    kb = select_user_kb(users, "user_profile", page_size=10)
     await message.answer(SELECT_USER, reply_markup=kb)
+    await message.answer(ENTER_USERNAME)
+    await state.set_state(AdminProfile.waiting_for_username)
+
+
+@router.message(AdminProfile.waiting_for_username)
+async def user_profile_reply_cmd(message: Message, state: FSMContext):
+    if str(message.from_user.id) not in ADMINS:
+        await message.answer(NOT_ADMIN)
+        return
+
+    username = message.text.strip()
+    username = username.lstrip('@')
+
+    user = await database.get_user_by_username(username)
+
+    if not user:
+        await message.answer(USER_NOT_FOUND)
+        return
+
+    user_id = user['telegram_id']
+    text = await format_profile(user_id)
+    photo = await format_profile_image(user_id)
+    await message.answer_document(document=photo, caption=text, parse_mode="HTML")
+    await state.clear()
 
 
 @router.callback_query(F.data.startswith("user_profile:"))
@@ -210,7 +235,7 @@ async def answer_cmd(message: Message):
         await message.answer(NOT_ADMIN)
         return
     
-    users = await database.get_all_users()
+    users = await database.get_users_with_no_design()
     kb = select_user_kb(users, "design")
     await message.answer(SELECT_USER, reply_markup=kb)
 

@@ -301,6 +301,18 @@ async def get_all_users():
         """)
         return [dict(r) for r in rows]
 
+# Get all users
+async def get_users_with_no_design():
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        rows = await conn.fetch("""
+            SELECT *
+            FROM bot_users
+            WHERE design_uncompressed IS NULL
+            ORDER BY created_at;
+        """)
+        return [dict(r) for r in rows]
+
 # Get pending mentors
 async def get_pending_mentors():
     async with pool.acquire() as conn:
@@ -329,6 +341,13 @@ async def get_user_by_id(telegram_id: int):
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
         row = await conn.fetchrow("SELECT * FROM bot_users WHERE telegram_id=$1", telegram_id)
+        return dict(row) if row else None
+
+# Get user by telegram_id
+async def get_user_by_username(username: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT * FROM bot_users WHERE username=$1", username)
         return dict(row) if row else None
 
 # Delete user
