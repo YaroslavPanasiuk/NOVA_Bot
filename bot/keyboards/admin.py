@@ -49,7 +49,7 @@ def select_user_for_design_kb(users, callback, page=0, page_size=20):
     start = page * page_size
     end = start + page_size
     buttons = []
-    for user in users:
+    for user in users[start:end]:
         appendix = ""
         if user['design_uncompressed'] or user['design_compressed'] or user['design_video']:
             appendix = "✅"
