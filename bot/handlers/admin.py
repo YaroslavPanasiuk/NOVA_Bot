@@ -263,12 +263,22 @@ async def design_profile_reply_cmd(message: Message, state: FSMContext):
     await message.answer(f"✍️ Надішли дизайн поста у форматі файлу для @{user['username']} (відмінити - /cancel)")
 
 
-@router.callback_query(F.data.startswith("page:"))
+@router.callback_query(F.data.startswith("page:design"))
 async def paginate_users(callback: CallbackQuery):
     callback_data = callback.data.split(":")[1]
     page = int(callback.data.split(":")[2])
     users = await database.get_all_users()
     kb = select_user_for_design_kb(users, callback=callback_data, page=page)
+    await callback.message.edit_reply_markup(reply_markup=kb)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("page:user_profile"))
+async def paginate_users(callback: CallbackQuery):
+    callback_data = callback.data.split(":")[1]
+    page = int(callback.data.split(":")[2])
+    users = await database.get_all_users()
+    kb = select_user_kb(users, callback=callback_data, page=page)
     await callback.message.edit_reply_markup(reply_markup=kb)
     await callback.answer()
 
