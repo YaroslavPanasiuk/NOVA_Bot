@@ -1,19 +1,11 @@
 import asyncpg
-from bot.config import DATABASE_NAME
+from bot.config import DATABASE_NAME, DATABASE_URL
 
 pool: asyncpg.pool.Pool = None
 
-DB_CONFIG = {
-    "user": "yaroslav",
-    "password": "1246",
-    "database": "nova_bot",
-    "host": "localhost",
-    "port": 5432
-}
-
 async def init_db():
     global pool
-    pool = await asyncpg.create_pool(**DB_CONFIG)
+    pool = await asyncpg.create_pool(DATABASE_URL, ssl=None)
 
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
