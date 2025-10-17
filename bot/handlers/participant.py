@@ -131,7 +131,7 @@ async def participant_instagram(message: Message, state: FSMContext):
 @router.message(ParticipantProfile.fundraising_goal)
 async def participant_goal(message: Message, state: FSMContext):
     text = message.text.strip().replace(",", ".").lstrip("грн").strip()
-    valid = await fundraising_goal_valid(text, 2000)
+    valid = await fundraising_goal_valid(text, 1000)
     if not valid:
         await message.answer(INVALID_NUMBER)
         return
