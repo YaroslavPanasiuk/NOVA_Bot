@@ -1,6 +1,6 @@
 import asyncio
 from aiogram import Bot, Dispatcher
-from bot.config import BOT_TOKEN
+from bot.config import BOT_TOKEN, INIT_RESOURCES_ON_START
 from bot.utils.files import init_resources
 from bot.utils.logs import setup_logging
 from bot.db.database import init_db
@@ -16,7 +16,8 @@ async def main():
 
     await init_db()
 
-    #await init_resources(bot)
+    if INIT_RESOURCES_ON_START == 'yes':
+        await init_resources(bot)
     
     await dp.start_polling(bot)
     print("Bot stopped.")
