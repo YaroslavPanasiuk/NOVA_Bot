@@ -12,7 +12,7 @@ async def format_profile(user_id: int) -> str:
     header = PARTICIPANT_PROFILE_HEADER if user.get('role') == "participant" else MENTOR_PROFILE_HEADER
     base_info = (
         f"{SEPARATOR}"        
-        f"{f"{header}":<100}\n"
+        f"{header}\n"
         f"{SEPARATOR}"
         f"{DEFAULT_PROFILE_NAME}{user.get('default_name') or ''}\n"
         f"{PROFILE_NAME}{user.get('first_name') or ''} {user.get('last_name') or ''} @{user.get('username') or ''}\n"
