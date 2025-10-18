@@ -76,7 +76,7 @@ async def send_answer(message: Message, state: FSMContext):
     try:
         await message.bot.send_message(
             user["telegram_id"],
-            f"💬 <b>Привіт, ти запитував:</b> `{question["question_text"]}`\n\n"
+            f"💬 <b>Привіт, ти запитував:</b> `{question['question_text']}`\n\n"
             f"🧠 <b>Ось відповідь від тех підтримки:</b> {message.text}",
             parse_mode="HTML"
         )
