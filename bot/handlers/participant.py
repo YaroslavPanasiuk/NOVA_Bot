@@ -7,7 +7,7 @@ from bot.db import database
 from bot.utils.formatters import format_profile, format_profile_image, format_design_preference, format_design_photos, format_mentor_profile_view
 from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb, confirm_data_processing_kb, confirm_kb, select_design_kb, cancel_registration_kb, menu_kb, url_kb
 from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
-from bot.utils.files import reupload_as_photo
+from bot.utils.spreadsheets import export_users_to_sheet
 from bot.utils.texts import PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT, CONFIRM_DATA_PROCESSING, PARTICIPANT_REGISTRATION_END, MENTOR_BUTTON, PARTICIPANT_NAME_PROMPT, PARTICIPANT_DESIGN_PROMPT, NO_MENTOR_FOUND, MENTOR_JAR
 
 router = Router()
@@ -245,6 +245,7 @@ async def participant_confirm(callback: CallbackQuery, state: FSMContext):
         user = await database.get_user_by_id(callback.from_user.id)
         await callback.message.answer(PROFILE_SAVED_PARTICIPANT, reply_markup=menu_kb(user))
         await callback.message.answer(PARTICIPANT_REGISTRATION_END)
+        await export_users_to_sheet([user])
         await callback.bot.send_message(data["mentor_id"], NEW_PARTICIPANT_JOINED)
         text = await format_profile(callback.from_user.id)
         kb = confirm_kb(f'approve_participant:{callback.from_user.id}')

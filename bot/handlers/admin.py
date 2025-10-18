@@ -9,9 +9,10 @@ from bot.config import ADMINS, DB_CHAT_ID, TECH_SUPPORT_ID
 from aiogram.filters import Command
 from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb, select_user_for_design_kb
 from bot.keyboards.common import role_choice_kb
-from bot.utils.formatters import format_profile, format_user_list, format_design_msg, format_profile_image
+from bot.utils.formatters import format_profile, format_user_list, format_profile_image
 from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, ENTER_USERNAME, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED_MENTOR, YOU_HAVE_BEEN_REJECTED_MENTOR, SEND_DESIGN_PROMPT, USER_NOT_REGISTERED, SELECT_ROLE
 from bot.utils.files import reupload_as_photo
+from bot.utils.spreadsheets import export_users_to_sheet
 
 router = Router()
 
@@ -527,5 +528,10 @@ async def list_pending_participants(message: Message):
         reply_markup=select_user_kb(participants, 'select_participant')
     )
 
-
-
+@router.message(Command("export_users"))
+async def export_users(message: Message):
+    if str(message.from_user.id) not in ADMINS:
+        return await message.answer(NOT_ADMIN)
+    users = await database.get_all_users()
+    await export_users_to_sheet(users)
+    await message.answer("✅ Users exported to Google Sheets!")
