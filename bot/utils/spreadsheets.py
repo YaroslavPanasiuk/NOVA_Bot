@@ -37,15 +37,15 @@ async def export_users_to_sheet(users, sheet_name: str = SHEET_NAME):
         if u.get("instagram", "") == "":
             insta = ""
         else:
-            insta = f"https://www.instagram.com/{u.get("instagram", "")}"
+            insta = f"https://www.instagram.com/{u.get('instagram', '')}"
         if u['design_uncompressed'] is None and u['design_video'] is None and u['design_animation'] is None:
             design = ""
         else:
             design = "✅"
         rows.append([
             u.get("default_name", ""),
-            f"{u.get("first_name", "")} {u.get("last_name", "")}",
-            f"@{u.get("username", "")}",
+            f"{u.get('first_name', '')} {u.get('last_name', '')}",
+            f"@{u.get('username', '')}",
             u.get("role", ""),
             u.get("status", ""),
             insta,
