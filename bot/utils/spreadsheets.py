@@ -1,8 +1,10 @@
 import gspread
 from google.oauth2.service_account import Credentials
-from bot.config import SHEET_URL, SHEET_NAME, GOOGLE_SERVICE_ACCOUNT_JSON
+from bot.config import SHEET_KEY, SHEET_NAME, GOOGLE_SERVICE_ACCOUNT_JSON
 import os
+from bot.utils.formatters import format_spreadsheets_data
 import json
+from bot.db import database
 
 def get_gspread_client():
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -10,6 +12,7 @@ def get_gspread_client():
     try:
         service_account_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
         creds = Credentials.from_service_account_info(service_account_info, scopes=scopes)
+        #creds = Credentials.from_service_account_file(".secrets/service_account.json", scopes=scopes)
         print("✅ Loaded Google credentials from environment variable.")
     except json.JSONDecodeError:
         raise ValueError("❌ GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON.")
@@ -17,74 +20,40 @@ def get_gspread_client():
     client = gspread.authorize(creds)
     return client
 
-async def export_users_to_sheet(users, sheet_name: str = SHEET_NAME):
-    client = get_gspread_client()
-    spreadsheet = client.open_by_url(SHEET_URL)
+client = get_gspread_client()
+spreadsheet = client.open_by_key(SHEET_KEY)
+print("✅ opened sheets")
+
+async def export_users_to_sheet(users = None, sheet_name: str = SHEET_NAME):
     try:
         sheet = spreadsheet.worksheet(sheet_name)
     except gspread.WorksheetNotFound:
         sheet = spreadsheet.add_worksheet(title=sheet_name, rows=1000, cols=20)
+    
+    sheet.batch_clear(['A1:L1000'])
 
-    sheet.clear()
+    if not users:
+        users = await database.get_all_users()
 
     if not users:
         sheet.update("A1", [["No users found in the database."]])
         return
 
-    headers = ["Ім'я", "Ім'я в телеграм", "Нікнейм", "Роль", "Статус", "Інстаграм", "Банка", "Ціль", "Дизайн", "Номер телефону", "Час реєстрації"]
-    rows = []
-    for u in users:
-        if u.get("instagram", "") == "":
-            insta = ""
-        else:
-            insta = f"https://www.instagram.com/{u.get('instagram', '')}"
-        if u['design_uncompressed'] is None and u['design_video'] is None and u['design_animation'] is None:
-            design = ""
-        else:
-            design = "✅"
-        rows.append([
-            u.get("default_name", ""),
-            f"{u.get('first_name', '')} {u.get('last_name', '')}",
-            f"@{u.get('username', '')}",
-            u.get("role", ""),
-            u.get("status", ""),
-            insta,
-            u.get("jar_url", ""),
-            str(u.get("fundraising_goal", "")),
-            design,
-            u.get("phone_number", ""),
-            u.get("created_at", "").strftime("%Y-%m-%d %H:%M:%S")
-        ])
+    headers, rows = await format_spreadsheets_data(users)
     sheet.update("A1", [headers] + rows)
 
-async def append_users_to_sheet(users, sheet_name: str = SHEET_NAME):
-    client = get_gspread_client()
-    spreadsheet = client.open_by_url(SHEET_URL)
 
+async def append_user_to_sheet(user, sheet_name: str = SHEET_NAME):
     try:
         sheet = spreadsheet.worksheet(sheet_name)
     except gspread.WorksheetNotFound:
         sheet = spreadsheet.add_worksheet(title=sheet_name, rows=1000, cols=20)
-        headers = ["Ім'я", "Ім'я в телеграм", "Нікнейм", "Роль", "Статус", "Інстаграм", "Банка", "Ціль", "Дизайн", "Час реєстрації", "Номер телефону"]
+        headers, _ = await format_spreadsheets_data([])
         sheet.append_row(headers, value_input_option="USER_ENTERED")
 
-    if not users:
+    if not user:
         return
+    
+    _, row = await format_spreadsheets_data([user])
 
-    for u in users:
-
-        row = [
-            u.get("default_name", ""),
-            f"{u.get('first_name', '')} {u.get('last_name', '')}",
-            f"@{u.get('username', '')}" if u.get("username") else "",
-            u.get("role", ""),
-            u.get("status", ""),
-            f"https://www.instagram.com/{u.get('instagram', '')}" if u.get("instagram") else "",
-            u.get("jar_url", ""),
-            str(u.get("fundraising_goal", "")),
-            u.get("design_uncompressed", ""),
-            u.get("created_at").strftime("%Y-%m-%d %H:%M:%S"),
-            u.get("phone_number", ""),
-        ]
-
-        sheet.append_row(row, value_input_option="USER_ENTERED")
+    sheet.append_row(row[0], value_input_option="USER_ENTERED")

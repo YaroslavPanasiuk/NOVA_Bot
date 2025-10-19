@@ -194,3 +194,50 @@ async def format_design_photos():
         InputMediaPhoto(media=design_engine['file_id'], caption=DESIGN_ENGINE_BUTTON)
     ]    
     return media
+
+
+async def format_spreadsheets_data(users):
+    print("✅ started")
+    headers = ["Ім'я", "Ім'я в телеграм", "Нікнейм", "Роль",  "Команда", "Інстаграм", "Банка", "Ціль", "Дизайн", "Час реєстрації", "Номер телефону"]
+    rows = []
+    role_map = {
+        "mentor": "Амбасадор",
+        "participant": "Учасник"
+    }
+    status_map = {
+        "approved": "✅",
+        "rejected": "(Відмовлено)",
+        "pending": "(Не затверджений)"
+    }
+    for u in users:
+        insta = f"https://www.instagram.com/{u.get('instagram')}" if u.get("instagram") else ""
+
+        has_design = any([
+            u.get('design_uncompressed'),
+            u.get('design_video'),
+            u.get('design_animation')
+        ])
+        design = "✅" if has_design else ""
+        role = f"{role_map.get(u.get('role'), '')} {status_map.get(u.get('status'), '')}"
+        team = ""
+
+        if u.get("role") == "mentor":
+            team = u.get("default_name", "")
+        elif u.get("role") == "participant":
+            mentor = await database.get_user_by_id(u.get("mentor_id"))
+            team = f"{mentor.get('default_name', '')} (@{mentor.get('username', '')})" if mentor else ""
+        
+        rows.append([
+            u.get("default_name", ""),
+            f"{u.get('first_name', '')} {u.get('last_name', '')}",
+            f"@{u.get('username', '')}",
+            role,
+            team,
+            insta,
+            u.get("jar_url", ""),
+            str(u.get("fundraising_goal", "")),
+            design,
+            u.get("phone_number", ""),
+            u.get("created_at", "").strftime("%Y-%m-%d %H:%M:%S")
+        ])
+    return headers, rows

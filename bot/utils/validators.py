@@ -1,15 +1,14 @@
 import re
 from decimal import Decimal, InvalidOperation
 
-async def instagram_valid(username: str) -> bool:
+def instagram_valid(username: str) -> bool:
     pattern = r"^[a-zA-Z_](?!.*?\.{2})[\w.]{1,28}[\w]$"
     return re.fullmatch(pattern, username) is not None
 
-async def monobank_jar_valid(url: str) -> bool:
+def monobank_jar_valid(url: str) -> bool:
     return url.startswith("https://send.monobank.ua/jar/") and len(url) <= 40 and len(url) >= 37
 
-async def fundraising_goal_valid(value: str, min=1000, max=5000000) -> bool:
-    print(min, max)
+def fundraising_goal_valid(value: str) -> bool:
     try:
         num = Decimal(value)
     except InvalidOperation:
@@ -21,4 +20,4 @@ async def fundraising_goal_valid(value: str, min=1000, max=5000000) -> bool:
     if abs(num.as_tuple().exponent) > 2:
         return False
 
-    return min <= num <= max
+    return True

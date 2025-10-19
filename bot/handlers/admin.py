@@ -124,6 +124,7 @@ async def approve_mentor(callback: CallbackQuery):
     await callback.message.edit_reply_markup()
     caption = await format_profile(mentor_id) + f"\n{MENTOR_APPROVED}"
     await callback.message.edit_caption(caption=caption)
+    await export_users_to_sheet()
     await callback.bot.send_message(chat_id=mentor_id, text=YOU_HAVE_BEEN_APPROVED_MENTOR)
     await callback.answer("Approved ✅")
 
@@ -333,6 +334,7 @@ async def photo_compressed(message: Message, state: FSMContext):
         await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)
         await message.bot.send_animation(chat_id=user_id, animation=file_id, caption=caption, parse_mode='HTML')
         await message.answer("✅ Дизайн надіслано.")
+        await export_users_to_sheet()
     except Exception as e:
         await message.answer(f"⚠️ Не вдалося надіслати дизайн: {e}")
 
@@ -362,6 +364,7 @@ async def design_caption(message: Message, state: FSMContext):
         await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)
         await message.bot.send_document(chat_id=user_id, document=file_id, caption=caption, parse_mode='HTML')
         await message.answer("✅ Дизайн надіслано.")
+        await export_users_to_sheet()
     except Exception as e:
         await message.answer(f"⚠️ Не вдалося надіслати дизайн: {e}")
 
@@ -385,6 +388,7 @@ async def design_caption(message: Message, state: FSMContext):
         await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)
         await message.bot.send_video(chat_id=user_id, video=video_id, caption=caption, parse_mode='HTML')
         await message.answer("✅ Дизайн надіслано.")
+        await export_users_to_sheet()
     except Exception as e:
         await message.answer(f"⚠️ Не вдалося надіслати дизайн: {e}")
 

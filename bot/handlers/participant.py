@@ -4,11 +4,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramBadRequest
 from bot.db import database
+from decimal import Decimal
 from bot.utils.formatters import format_profile, format_profile_image, format_design_preference, format_design_photos, format_mentor_profile_view
 from bot.keyboards.common import mentor_carousel_kb, participant_confirm_profile_kb, confirm_data_processing_kb, confirm_kb, select_design_kb, cancel_registration_kb, menu_kb, url_kb
 from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
+from bot.utils.texts import *
 from bot.utils.spreadsheets import export_users_to_sheet
-from bot.utils.texts import PARTICIPANT_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, PARTICIPANT_GOAL_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_PARTICIPANT, PROFILE_CANCELLED, NO_MENTORS_AVAILABLE, NEW_PARTICIPANT_JOINED, PARTICIPANT_SELECT_MENTOR_PROMPT, PARTICIPANT_PHOTO_PROMPT, SELECTED_MENTOR, CONFIRM_PROFILE, PROFILE_CONFIRMED, INVALID_JAR_URL, PARTICIPANT_JAR_PROMPT, CONFIRM_DATA_PROCESSING, PARTICIPANT_REGISTRATION_END, MENTOR_BUTTON, PARTICIPANT_NAME_PROMPT, PARTICIPANT_DESIGN_PROMPT, NO_MENTOR_FOUND, MENTOR_JAR
 
 router = Router()
 
@@ -31,7 +32,6 @@ async def start_participant(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer(NO_MENTORS_AVAILABLE)
         return
 
-    # store mentors list in FSM
     await state.update_data(mentors=mentors, current_index=0, role="participant")
 
     first_mentor = mentors[0]
@@ -113,7 +113,7 @@ async def participant_instagram(message: Message, state: FSMContext):
     insta = message.text.strip()
     insta = insta.lstrip('@')
 
-    valid = await instagram_valid(insta)
+    valid = instagram_valid(insta)
 
     if not valid:
         print(insta)
@@ -131,10 +131,12 @@ async def participant_instagram(message: Message, state: FSMContext):
 @router.message(ParticipantProfile.fundraising_goal)
 async def participant_goal(message: Message, state: FSMContext):
     text = message.text.strip().replace(",", ".").lstrip("грн").strip()
-    valid = await fundraising_goal_valid(text, 1000)
+    valid = fundraising_goal_valid(text)
     if not valid:
         await message.answer(INVALID_NUMBER)
         return
+    if Decimal(text) < 1000:
+        return await message.answer(GOAL_TOO_LOW.format(min='1000'))
     try:
         goal = float(text)
     except ValueError:
@@ -153,12 +155,14 @@ async def participant_goal(message: Message, state: FSMContext):
 # Monobank jar
 @router.message(ParticipantProfile.monobank_jar)
 async def mentor_goal(message: Message, state: FSMContext):
-    valid = await monobank_jar_valid(message.text)
+    valid = monobank_jar_valid(message.text)
     if not valid:
-        await message.answer(
-            INVALID_JAR_URL
-        )
+        await message.answer(INVALID_JAR_URL)
         return
+    participant = await database.get_user_by_id(message.from_user.id)
+    mentor = await database.get_user_by_id(participant['mentor_id'])
+    if message.text == mentor['jar_url']:
+        return await message.answer(SAME_JAR_URL)
     await state.update_data(jar_url=message.text)
     await state.set_state(ParticipantProfile.photo)
     await database.set_jar(telegram_id=message.from_user.id, jar_url=message.text)
@@ -245,7 +249,7 @@ async def participant_confirm(callback: CallbackQuery, state: FSMContext):
         user = await database.get_user_by_id(callback.from_user.id)
         await callback.message.answer(PROFILE_SAVED_PARTICIPANT, reply_markup=menu_kb(user))
         await callback.message.answer(PARTICIPANT_REGISTRATION_END)
-        await export_users_to_sheet([user])
+        await export_users_to_sheet()
         await callback.bot.send_message(data["mentor_id"], NEW_PARTICIPANT_JOINED)
         text = await format_profile(callback.from_user.id)
         kb = confirm_kb(f'approve_participant:{callback.from_user.id}')

@@ -52,6 +52,42 @@ async def init_db():
             created_at TIMESTAMP DEFAULT NOW()
         );
         """)
+        await conn.execute("""
+        CREATE OR REPLACE FUNCTION notify_user_changes()
+        RETURNS trigger AS $$
+        DECLARE
+            payload JSON;
+        BEGIN
+            IF (TG_OP = 'DELETE') THEN
+                payload = json_build_object(
+                    'operation', TG_OP,
+                    'telegram_id', OLD.telegram_id
+                );
+            ELSEIF (TG_OP = 'INSERT') THEN
+                payload = json_build_object(
+                    'operation', TG_OP,
+                    'telegram_id', NEW.telegram_id
+                );
+            ELSE 
+                payload = json_build_object(
+                    'operation', TG_OP,
+                    'telegram_id', NEW.telegram_id
+                );
+            END IF;
+
+            PERFORM pg_notify('user_changes', payload::text);
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        DROP TRIGGER IF EXISTS user_changes_trigger ON bot_users;
+
+        CREATE TRIGGER user_changes_trigger
+        AFTER INSERT OR UPDATE OR DELETE ON bot_users
+        FOR EACH ROW
+        EXECUTE FUNCTION notify_user_changes();
+
+        """)
 
 # Add user after phone verification
 async def add_user(phone: str, from_user):

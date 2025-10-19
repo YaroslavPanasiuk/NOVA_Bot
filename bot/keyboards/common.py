@@ -124,6 +124,9 @@ def menu_kb(user) -> InlineKeyboardMarkup:
 
     if user['role'] == 'mentor' and user['status'] != 'approved':
         buttons.append([KeyboardButton(text=RESTART_BUTTON)])
+
+    if user['role'] == 'pending':
+        buttons.append([KeyboardButton(text=RESTART_BUTTON)])
         
     if user['role'] == 'participant':
         buttons.append([KeyboardButton(text=MENTOR_BUTTON)])

@@ -1,18 +1,19 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramBadRequest
 from bot.db import database
+from decimal import Decimal
 from bot.utils.formatters import format_profile, format_profile_image, format_mentor_profile_view, format_design_preference, format_design_photos
 from bot.keyboards.common import mentor_confirm_profile_kb, mentor_confirm_profile_view_kb, confirm_kb, select_design_kb, cancel_registration_kb, menu_kb
 from bot.keyboards.admin import select_user_kb
 from bot.config import ADMINS
 from aiogram import Bot
 from bot.utils.files import reupload_as_photo
-from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
 from bot.utils.spreadsheets import export_users_to_sheet
-from bot.utils.texts import MENTOR_INSTAGRAM_PROMPT, INVALID_INSTAGRAM, MENTOR_GOAL_PROMPT, MENTOR_PHOTO_PROMPT, INVALID_NUMBER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, PROFILE_SAVED_MENTOR, PROFILE_CANCELLED, MENTOR_NOT_FOUND, NEW_MENTOR_PENDING, MANAGE_PENDING_MENTORS, NO_PARTICIPANTS, MY_PARTICIPANTS_HEADER, CONFIRM_PROFILE, MENTOR_DESCRIPTION_PROMPT, PROFILE_CONFIRMED, CONFIRM_PROFILE_VIEW, INVALID_JAR_URL, MENTOR_JAR_PROMPT, TEAM_BUTTON, PROFILE_VIEW_BUTTON, CHANGE_DESCRIPTION_BUTTON, CHANGE_DESCRIPTION_MSG, NEW_DESCRIPTION_SET, CHANGE_GOAL_BUTTON, NEW_GOAL_SET, CHANGE_INSTAGRAM_BUTTON, NEW_INSTAGRAM_SET, CHANGE_MONOBANK_BUTTON, NEW_MONOBANK_SET, CHANGE_GOAL_MSG, CHANGE_INSTAGRAM_MSG, CHANGE_MONOBANK_MSG, MENTOR_NAME_PROMPT, PENDING_PARTICIPANTS_BUTTON, NOT_ADMIN, NO_PENDING_PARTICIPANTS, USER_NOT_FOUND, PARTICIPANT_APPROVED, YOU_HAVE_BEEN_APPROVED_PARTICIPANT, PARTICIPANT_REJECTED, MENTOR_DESIGN_PROMPT
+from bot.utils.validators import instagram_valid, monobank_jar_valid, fundraising_goal_valid
+from bot.utils.texts import *
 
 
 router = Router()
@@ -55,7 +56,7 @@ async def mentor_instagram(message: Message, state: FSMContext):
     insta = message.text.strip()
     insta = insta.lstrip('@')
 
-    valid = await instagram_valid(insta)
+    valid = instagram_valid(insta)
 
     if not valid:
         await message.answer(
@@ -71,10 +72,12 @@ async def mentor_instagram(message: Message, state: FSMContext):
 @router.message(MentorProfile.fundraising_goal)
 async def mentor_goal(message: Message, state: FSMContext):
     text = message.text.strip().replace(",", ".").lstrip("грн").strip()
-    valid = await fundraising_goal_valid(text, 50000)
+    valid = fundraising_goal_valid(text)
     if not valid:
         await message.answer(INVALID_NUMBER)
         return
+    if Decimal(text) < 50000:
+        return await message.answer(GOAL_TOO_LOW.format(min='50000'))
     try:
         goal = float(text)
     except ValueError:
@@ -89,7 +92,7 @@ async def mentor_goal(message: Message, state: FSMContext):
 @router.message(MentorProfile.monobank_jar)
 async def mentor_goal(message: Message, state: FSMContext):
 
-    valid = await monobank_jar_valid(message.text)
+    valid = monobank_jar_valid(message.text)
 
     if not valid:
         await message.answer(
@@ -193,7 +196,7 @@ async def mentor_confirm(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_reply_markup()
         user = await database.get_user_by_id(callback.from_user.id)
         await callback.message.answer(PROFILE_SAVED_MENTOR, reply_markup=menu_kb(user))
-        await export_users_to_sheet([user])
+        await export_users_to_sheet()
         await notify_admins(callback.message.bot, callback.from_user.id)
     else:
         await callback.message.answer(PROFILE_CANCELLED)
@@ -274,7 +277,7 @@ async def change_goal(message: Message, state: FSMContext):
 @router.message(MentorProfile.change_goal, F.text)
 async def set_goal(message: Message, state: FSMContext):
     text = message.text.strip().replace(",", ".").lstrip("грн").strip()
-    valid = await fundraising_goal_valid(text, 50000)
+    valid = fundraising_goal_valid(text, 50000)
     if not valid:
         await message.answer(INVALID_NUMBER)
         return
@@ -297,7 +300,7 @@ async def change_monobank(message: Message, state: FSMContext):
 
 @router.message(MentorProfile.change_monobank, F.text)
 async def set_monobank(message: Message, state: FSMContext):
-    valid = await monobank_jar_valid(message.text)
+    valid = monobank_jar_valid(message.text)
 
     if not valid:
         await message.answer(
@@ -321,7 +324,7 @@ async def set_instagram(message: Message, state: FSMContext):
     insta = message.text.strip()
     insta = insta.lstrip('@')
 
-    valid = await instagram_valid(insta)
+    valid = instagram_valid(insta)
 
     if not valid:
         await message.answer(
@@ -384,6 +387,7 @@ async def approve_participant(callback: CallbackQuery):
     participant_id = int(callback.data.split(":")[1])
     await database.update_status(participant_id, "approved")
     await database.update_created_at(participant_id)
+    await export_users_to_sheet()
     await callback.bot.send_message(chat_id=participant_id, text=YOU_HAVE_BEEN_APPROVED_PARTICIPANT)
     await callback.answer("Approved ✅")
 
