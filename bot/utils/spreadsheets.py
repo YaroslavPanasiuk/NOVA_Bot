@@ -53,8 +53,7 @@ async def export_users_to_sheet(users = None, sheet_name: str = SHEET_NAME):
                     "cell": {
                         "userEnteredFormat": {
                             "numberFormat": {
-                                "type": "NUMBER",
-                                "pattern": "0,00"
+                                "type": "CURRENCY"
                             }
                         }
                     },

@@ -223,8 +223,11 @@ async def format_spreadsheets_data(users):
 
         try: 
             jar_amount = u['jar_amount'][:-1]
+            #jar_amount = jar_amount.replace('.', ',')
         except Exception:
             jar_amount = '0'
+
+        #goal = str(u.get("fundraising_goal", "")).replace('.', ',')
 
         if u.get("role") == "mentor":
             team = u.get("default_name", "")
@@ -240,8 +243,8 @@ async def format_spreadsheets_data(users):
             team,
             insta,
             u.get("jar_url", ""),
-            jar_amount,
-            str(u.get("fundraising_goal", "")),
+            float(jar_amount),
+            float(u.get("fundraising_goal", 0)),
             design,
             u.get("phone_number", ""),
             u.get("created_at", "").strftime("%Y-%m-%d %H:%M:%S")
