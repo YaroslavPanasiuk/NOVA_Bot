@@ -236,6 +236,7 @@ async def my_participants(message: Message):
         if len(text) > 3800:
             await message.answer(text, parse_mode='html')
             text = ""
+    await message.answer(text, parse_mode='html')
 
 
 @router.message((F.text == "/profile_view" ) | ( F.text == PROFILE_VIEW_BUTTON))

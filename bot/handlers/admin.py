@@ -603,3 +603,4 @@ async def list_pending_participants(message: Message):
         if len(text) > 3800:
             await message.answer(text, parse_mode='html')
             text = ""
+    await message.answer(text, parse_mode='html')
