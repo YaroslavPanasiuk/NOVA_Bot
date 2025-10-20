@@ -41,6 +41,28 @@ async def export_users_to_sheet(users = None, sheet_name: str = SHEET_NAME):
 
     headers, rows = await format_spreadsheets_data(users)
     sheet.update("A1", [headers] + rows)
+    sheet.spreadsheet.batch_update({
+        "requests": [
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": sheet.id,
+                        "startColumnIndex": 7,
+                        "endColumnIndex": 9
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "numberFormat": {
+                                "type": "NUMBER",
+                                "pattern": "0,00"
+                            }
+                        }
+                    },
+                    "fields": "userEnteredFormat.numberFormat"
+                }
+            }
+        ]
+    })
 
 
 async def append_user_to_sheet(user, sheet_name: str = SHEET_NAME):
