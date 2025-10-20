@@ -1,5 +1,5 @@
 from bot.db import database
-from aiogram.exceptions import AiogramError
+from decimal import Decimal
 from aiogram.types import InputMediaPhoto, FSInputFile
 from bot.utils.texts import SEPARATOR, PROFILE_NAME, PROFILE_PHONE, PROFILE_INSTAGRAM, PROFILE_GOAL, PROFILE_STATUS, PROFILE_MENTOR, PARTICIPANT_PROFILE_HEADER, MENTOR_PROFILE_HEADER, PROFILE_DESCRIPTION, PROFILE_JAR, REGISTERED_USERS_HEADER, QUESTION_LIST_HEADER, SUGGEST_ANSWER_COMMAND, FUNDRAISING_DESIGN_2000_10000, FUNDRAISING_DESIGN_10000_150000, FUNDRAISING_DESIGN_150000_20000, FUNDRAISING_DESIGN_20000_25000, FUNDRAISING_DESIGN_25000_50000, FUNDRAISING_DESIGN_MENTOR, DEFAULT_PROFILE_NAME, DESIGN_WHEEL_BUTTON, DESIGN_CAMERA_BUTTON, DESIGN_CIRCUIT_BUTTON, DESIGN_CONNECTION_BUTTON, DESIGN_ENGINE_BUTTON, PROFILE_DESIGN_PREFERENCE
 MAX_MESSAGE_LENGTH = 4096
@@ -20,7 +20,6 @@ async def format_profile(user_id: int) -> str:
         f"{PROFILE_INSTAGRAM}{user.get('instagram') or '—'}\n"
         f"{PROFILE_GOAL}{format_amount(user.get('fundraising_goal', 0.0))}\n"
         f"{PROFILE_JAR}{user.get('jar_url', '—')}\n"
-        f"{PROFILE_DESIGN_PREFERENCE}{user.get('design_preference', '—')}\n"
     )
 
     if user.get('role') == "mentor":
@@ -28,6 +27,7 @@ async def format_profile(user_id: int) -> str:
         base_info += f"{PROFILE_STATUS}{user['status']}\n"
 
     if user.get('role') == "participant":
+        base_info += f"{PROFILE_DESIGN_PREFERENCE}{user.get('design_preference', '—')}\n"
         mentor = await database.get_user_by_id(user.get('mentor_id'))
         if mentor:
             base_info += f"{PROFILE_MENTOR}{mentor.get('default_name', '')}\n"
@@ -198,7 +198,7 @@ async def format_design_photos():
 
 async def format_spreadsheets_data(users):
     print("✅ started")
-    headers = ["Ім'я", "Ім'я в телеграм", "Нікнейм", "Роль",  "Команда", "Інстаграм", "Банка", "Ціль", "Дизайн", "Час реєстрації", "Номер телефону"]
+    headers = ["Ім'я", "Ім'я в телеграм", "Нікнейм", "Роль",  "Команда", "Інстаграм", "Банка", "Сума на банці", "Ціль", "Дизайн", "Час реєстрації", "Номер телефону"]
     rows = []
     role_map = {
         "mentor": "Амбасадор",
@@ -221,6 +221,11 @@ async def format_spreadsheets_data(users):
         role = f"{role_map.get(u.get('role'), '')} {status_map.get(u.get('status'), '')}"
         team = ""
 
+        try: 
+            jar_amount = u['jar_amount'][:-1]
+        except Exception:
+            jar_amount = '0'
+
         if u.get("role") == "mentor":
             team = u.get("default_name", "")
         elif u.get("role") == "participant":
@@ -235,6 +240,7 @@ async def format_spreadsheets_data(users):
             team,
             insta,
             u.get("jar_url", ""),
+            jar_amount,
             str(u.get("fundraising_goal", "")),
             design,
             u.get("phone_number", ""),

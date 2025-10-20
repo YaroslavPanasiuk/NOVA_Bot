@@ -232,12 +232,12 @@ async def my_participants(message: Message):
 
     text = MY_PARTICIPANTS_HEADER
     for p in participants:
-        text += f"• {p.get('first_name', '')} {p.get('last_name', '')} @{p.get('username', '')} — Банка: {p.get('jar_url', '—')}\n"
+        text += f"• {p.get('default_name', '')} (@{p.get('username', '')}): {p.get('jar_amount', '')} / {p.get('fundraising_goal', '')}₴, <a href='{p.get('jar_url', '')}'>банка</a>\n"
 
     # Split long messages into chunks
     MAX_LEN = 4000
     for i in range(0, len(text), MAX_LEN):
-        await message.answer(text[i:i+MAX_LEN])
+        await message.answer(text[i:i+MAX_LEN], parse_mode='html')
 
 
 @router.message((F.text == "/profile_view" ) | ( F.text == PROFILE_VIEW_BUTTON))

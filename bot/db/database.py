@@ -22,6 +22,7 @@ async def init_db():
             instagram TEXT DEFAULT '',
             fundraising_goal NUMERIC(12,2) DEFAULT 0,
             jar_url TEXT DEFAULT '',
+            jar_amount TEXT DEFAULT 0,
             description TEXT DEFAULT 'no description',
             status TEXT DEFAULT 'pending',
             mentor_id BIGINT REFERENCES bot_users(telegram_id),
@@ -195,6 +196,16 @@ async def set_jar(telegram_id: int, jar_url: str):
         SET jar_url=$1
         WHERE telegram_id=$2;
         """, jar_url, telegram_id)
+
+
+async def set_jar_amount(telegram_id: int, jar_amount: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("""
+        UPDATE bot_users
+        SET jar_amount=$1
+        WHERE telegram_id=$2;
+        """, jar_amount, telegram_id)
 
 
 async def set_description(telegram_id: int, description: str):

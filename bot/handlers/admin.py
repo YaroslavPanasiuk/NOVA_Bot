@@ -13,6 +13,7 @@ from bot.utils.formatters import format_profile, format_user_list, format_profil
 from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, ENTER_USERNAME, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED_MENTOR, YOU_HAVE_BEEN_REJECTED_MENTOR, SEND_DESIGN_PROMPT, USER_NOT_REGISTERED, SELECT_ROLE
 from bot.utils.files import reupload_as_photo
 from bot.utils.spreadsheets import export_users_to_sheet
+from bot.utils.fetch_urls import get_jar_amount
 
 router = Router()
 
@@ -539,3 +540,37 @@ async def export_users(message: Message):
     users = await database.get_all_users()
     await export_users_to_sheet(users)
     await message.answer("✅ Users exported to Google Sheets!")
+
+@router.message(Command("fetch_jars"))
+async def fetch_jars(message: Message):
+    if str(message.from_user.id) not in ADMINS:
+        return await message.answer(NOT_ADMIN)
+    users = await database.get_all_users()
+    text = "Ось список користувачів та їх актуальні суми на банках:\n"
+    new_msg = await message.answer(text)
+    for user in users:
+        jar_url = user['jar_url']
+        if jar_url and len(jar_url) > 0:
+            amount = get_jar_amount(jar_url)
+        else:
+            amount = "0₴"
+        await database.set_jar_amount(user['telegram_id'], amount)
+        text += f"{user['default_name']} (@{user['username']}): {amount} <a href='{jar_url}'>банка</a>\n"
+        await new_msg.edit_text(text, parse_mode='html')
+    await export_users_to_sheet(users)
+
+
+async def refresh_jars_progress(bot):
+    users = await database.get_all_users()
+    text = "Ось список користувачів та їх актуальні суми на банках:\n"
+    for user in users:
+        jar_url = user['jar_url']
+        if jar_url and len(jar_url) > 0:
+            amount = get_jar_amount(jar_url)
+        else:
+            amount = "0₴"
+        await database.set_jar_amount(user['telegram_id'], amount)
+        text += f"{user['default_name']} (@{user['username']}): {amount} <a href='{jar_url}'>банка</a>\n"
+    await export_users_to_sheet(users)
+    await bot.send_message(chat_id=ADMINS[0], text=text)
+        
