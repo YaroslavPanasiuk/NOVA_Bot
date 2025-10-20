@@ -7,7 +7,7 @@ def get_jar_amount(url: str) -> list[str]:
 
     pattern = r'<div class="stats-data-value">(.*?)</div>'
     matches = re.findall(pattern, html, re.DOTALL)
-    if len(matches) == 2:
+    if len(matches) == 2 or "has been reached" in html:
         result = matches[0].replace('&nbsp;', '')
         return result.replace(' ', '')
     return "0₴"
