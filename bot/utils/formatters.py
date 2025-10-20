@@ -226,6 +226,8 @@ async def format_spreadsheets_data(users):
             #jar_amount = jar_amount.replace('.', ',')
         except Exception:
             jar_amount = '0'
+        if not jar_amount or jar_amount == "0":
+            jar_amount = "0"
 
         #goal = str(u.get("fundraising_goal", "")).replace('.', ',')
 
