@@ -10,7 +10,7 @@ from aiogram.filters import Command
 from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb, select_user_for_design_kb
 from bot.keyboards.common import role_choice_kb
 from bot.utils.formatters import format_profile, format_user_list, format_profile_image
-from bot.utils.texts import NOT_ADMIN, NO_USERS_FOUND, ENTER_USERNAME, NO_PENDING_MENTORS, MENTOR_APPROVED, MENTOR_REJECTED, NO_MENTORS_FOUND, REMOVE_USER_USAGE, USER_REMOVED, MENTOR_NOT_FOUND, USER_PROFILE_USAGE, REMOVE_USER_EXCEPTION, MENTOR_HAS_TEAM_EXCEPTION, SELECT_USER, SEND_AS_FILE_WARNING, NOT_IMAGE_FILE, USER_NOT_FOUND, DESIGN_SENT, DESIGN_INSTRUCTIONS, LIST_USERS_BUTTON, PENDING_MENTORS_BUTTON, LIST_MENTORS_BUTTON, REMOVE_USER_BUTTON, USER_PROFILE_BUTTON, SEND_DESIGN_BUTTON, YOU_HAVE_BEEN_APPROVED_MENTOR, YOU_HAVE_BEEN_REJECTED_MENTOR, SEND_DESIGN_PROMPT, USER_NOT_REGISTERED, SELECT_ROLE
+from bot.utils.texts import *
 from bot.utils.files import reupload_as_photo
 from bot.utils.spreadsheets import export_users_to_sheet
 from bot.utils.fetch_urls import get_jar_amount
@@ -573,4 +573,34 @@ async def refresh_jars_progress(bot):
         text += f"{user['default_name']} (@{user['username']}): {amount} <a href='{jar_url}'>банка</a>\n"
     await export_users_to_sheet(users)
     await bot.send_message(chat_id=ADMINS[0], text=text)
-        
+
+
+@router.message(F.text.startswith("/team_of"))
+async def list_pending_participants(message: Message):
+    if str(message.from_user.id) not in ADMINS:
+        await message.answer(NOT_ADMIN)
+        return
+    parts = message.text.strip().split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await message.answer(REMOVE_USER_USAGE)
+        return
+
+    user_id = int(parts[1]) 
+    user = await database.get_user_by_id(user_id)
+    if not (user['role'] == 'mentor' and user['status'] == 'approved'):
+        return await message.answer(NOT_ADMIN)
+
+    participants = await database.get_participants_of_mentor(user_id)
+
+    if not participants:
+        await message.answer(NO_PARTICIPANTS)
+        return
+
+    text = MY_PARTICIPANTS_HEADER
+    for p in participants:
+        text += f"• {p.get('default_name', '')} (@{p.get('username', '')}): {p.get('jar_amount', '')} / {p.get('fundraising_goal', '')}₴, <a href='{p.get('jar_url', '')}'>банка</a>\n"
+
+    # Split long messages into chunks
+    MAX_LEN = 4000
+    for i in range(0, len(text), MAX_LEN):
+        await message.answer(text[i:i+MAX_LEN], parse_mode='html')
