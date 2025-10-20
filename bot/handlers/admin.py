@@ -600,8 +600,6 @@ async def list_pending_participants(message: Message):
     text = MY_PARTICIPANTS_HEADER
     for p in participants:
         text += f"• {p.get('default_name', '')} (@{p.get('username', '')}): {p.get('jar_amount', '')} / {p.get('fundraising_goal', '')}₴, <a href='{p.get('jar_url', '')}'>банка</a>\n"
-    text = html.escape(text)
-    # Split long messages into chunks
-    MAX_LEN = 4000
-    for i in range(0, len(text), MAX_LEN):
-        await message.answer(text[i:i+MAX_LEN], parse_mode='html')
+        if len(text) > 3800:
+            await message.answer(text, parse_mode='html')
+            text = ""
