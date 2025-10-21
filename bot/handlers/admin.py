@@ -582,7 +582,7 @@ async def refresh_jars_progress(bot):
             amount = "0₴"
         await database.set_jar_amount(user['telegram_id'], amount)
         text += f"{user['default_name']} (@{user['username']}): {amount} <a href='{jar_url}'>банка</a>\n"
-    await export_users_to_sheet(users)
+    await export_users_to_sheet()
     await bot.send_message(chat_id=ADMINS[0], text=text)
 
 
