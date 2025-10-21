@@ -1,6 +1,7 @@
 import requests
 import re
 from bot.config import BROWSERLESS_TOKEN
+import aiohttp
 
 async def get_jar_amount(url: str) -> list[str]:
     html = await get_rendered_html(url)
@@ -32,10 +33,15 @@ async def get_rendered_html(url: str) -> str:
         "url": f"{url}"
     }
 
-    response = await requests.post(
+    data = await send_post_async(
         f"{endpoint}?token={BROWSERLESS_TOKEN}",
         json={"query": query, "variables": variables}
     )
-    data = response.json()
     html_content = data.get("data", {}).get("html", "")
     return html_content['html']
+
+
+async def send_post_async(url, json):
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=json) as response:
+            return await response.json()

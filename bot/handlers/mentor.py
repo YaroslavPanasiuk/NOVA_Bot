@@ -245,11 +245,11 @@ async def show_my_profile_view(message: Message):
     photo, text, type = await format_mentor_profile_view(telegram_id)
     kb = mentor_confirm_profile_view_kb()
     if type == 'animation':
-        await message.answer_animation(animation=photo, caption=text, reply_markup=kb, parse_mode="HTML")
+        await message.answer_animation(animation=photo, caption=text, parse_mode="HTML")
     if type == 'video':
-        await message.answer_video(video=photo, caption=text, reply_markup=kb, parse_mode="HTML")
+        await message.answer_video(video=photo, caption=text, parse_mode="HTML")
     if type == 'photo':
-        await message.answer_photo(photo=photo, caption=text, reply_markup=kb, parse_mode="HTML")
+        await message.answer_photo(photo=photo, caption=text, parse_mode="HTML")
 
 
 @router.message((F.text == "/change_description" ) | ( F.text == CHANGE_DESCRIPTION_BUTTON))
