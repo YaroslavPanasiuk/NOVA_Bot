@@ -542,11 +542,21 @@ async def export_users(message: Message):
     await export_users_to_sheet(users)
     await message.answer("✅ Users exported to Google Sheets!")
 
-@router.message(Command("fetch_jars"))
+@router.message(F.text.startswith("/fetch_jars"))
 async def fetch_jars(message: Message):
     if str(message.from_user.id) not in ADMINS:
         return await message.answer(NOT_ADMIN)
-    users = await database.get_all_users()
+    parts = message.text.strip().split()
+    if len(parts) > 2:
+        return
+    if len(parts) == 1:
+        arg = 'all'
+    if len(parts) == 2:
+        arg = parts[1]
+    if arg == "all":
+        users = await database.get_all_users()
+    if arg == "mentors":
+        users = await database.get_mentors()
     text = "Ось список користувачів та їх актуальні суми на банках:\n"
     new_msg = await message.answer(text)
     for user in users:
@@ -600,7 +610,7 @@ async def list_pending_participants(message: Message):
     text = MY_PARTICIPANTS_HEADER
     for p in participants:
         text += f"• {p.get('default_name', '')} (@{p.get('username', '')}): {p.get('jar_amount', '')} / {p.get('fundraising_goal', '')}₴, <a href='{p.get('jar_url', '')}'>банка</a>\n"
-        if len(text) > 3800:
+        if len(text) > 5000:
             await message.answer(text, parse_mode='html')
             text = ""
     await message.answer(text, parse_mode='html')
