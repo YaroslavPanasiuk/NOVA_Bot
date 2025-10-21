@@ -23,7 +23,7 @@ async def main():
         await init_resources(bot)
 
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(refresh_jars_progress, "cron", hour=0, minute=0, args=[bot])
+    scheduler.add_job(refresh_jars_progress, "cron", hour="0,10,15,20", args=[bot])
     scheduler.start()
 
     listener_task = asyncio.create_task(listen_for_changes())

@@ -2,7 +2,7 @@ import requests
 import re
 from bot.config import BROWSERLESS_TOKEN
 
-def get_jar_amount(url: str) -> list[str]:
+async def get_jar_amount(url: str) -> list[str]:
     html = get_rendered_html(url)
 
     pattern = r'<div class="stats-data-value">(.*?)</div>'

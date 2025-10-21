@@ -562,7 +562,7 @@ async def fetch_jars(message: Message):
     for user in users:
         jar_url = user['jar_url']
         if jar_url and len(jar_url) > 0:
-            amount = get_jar_amount(jar_url)
+            amount = await get_jar_amount(jar_url)
         else:
             amount = "0₴"
         await database.set_jar_amount(user['telegram_id'], amount)
@@ -577,7 +577,7 @@ async def refresh_jars_progress(bot):
     for user in users:
         jar_url = user['jar_url']
         if jar_url and len(jar_url) > 0:
-            amount = get_jar_amount(jar_url)
+            amount = await get_jar_amount(jar_url)
         else:
             amount = "0₴"
         await database.set_jar_amount(user['telegram_id'], amount)
