@@ -542,6 +542,17 @@ async def export_users(message: Message):
     await export_users_to_sheet(users)
     await message.answer("✅ Users exported to Google Sheets!")
 
+@router.message(Command("list_jobs"))
+async def export_users(message: Message):
+    if str(message.from_user.id) not in ADMINS:
+        return await message.answer(NOT_ADMIN)
+    from bot.utils.schedulers import list_jobs
+    jobs = list_jobs()
+    text = ''
+    for job in jobs:
+        text += (f"🕒 Job ID: {job.id} | Trigger: {job.trigger} | Next Run: {job.next_run_time}\n")
+    await message.answer(text)
+
 @router.message(F.text.startswith("/fetch_jars"))
 async def fetch_jars(message: Message):
     if str(message.from_user.id) not in ADMINS:
