@@ -3,7 +3,7 @@ import re
 from bot.config import BROWSERLESS_TOKEN
 
 async def get_jar_amount(url: str) -> list[str]:
-    html = get_rendered_html(url)
+    html = await get_rendered_html(url)
 
     pattern = r'<div class="stats-data-value">(.*?)</div>'
     matches = re.findall(pattern, html, re.DOTALL)
@@ -12,7 +12,7 @@ async def get_jar_amount(url: str) -> list[str]:
         return result.replace(' ', '')
     return "0₴"
 
-def get_rendered_html(url: str) -> str:
+async def get_rendered_html(url: str) -> str:
     endpoint = "https://production-sfo.browserless.io/chromium/bql"
 
     query = """
@@ -32,11 +32,10 @@ def get_rendered_html(url: str) -> str:
         "url": f"{url}"
     }
 
-    response = requests.post(
+    response = await requests.post(
         f"{endpoint}?token={BROWSERLESS_TOKEN}",
         json={"query": query, "variables": variables}
     )
-    print(response)
     data = response.json()
     html_content = data.get("data", {}).get("html", "")
     return html_content['html']
