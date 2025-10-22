@@ -30,7 +30,7 @@ def get_jar_amount(url: str) -> str:
     )
 
     driver.get(url)
-    driver.implicitly_wait(5)
+    driver.implicitly_wait(10)
     try:
         elements = driver.find_elements(By.CLASS_NAME, "stats-data-value")
         if len(elements) == 0 or len(elements) > 2:
