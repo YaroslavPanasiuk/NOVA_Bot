@@ -1,47 +1,47 @@
-import requests
-import re
 from bot.config import BROWSERLESS_TOKEN
-import aiohttp
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import asyncio
 
-async def get_jar_amount(url: str) -> list[str]:
-    html = await get_rendered_html(url)
+chrome_options = webdriver.ChromeOptions()
+chrome_options.set_capability('browserless:token', BROWSERLESS_TOKEN)
+chrome_options.add_argument("--window-size=1920,1080")
+chrome_options.add_argument("--disable-background-timer-throttling")
+chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+chrome_options.add_argument("--disable-breakpad")
+chrome_options.add_argument("--disable-component-extensions-with-background-pages")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--disable-extensions")
+chrome_options.add_argument("--disable-features=TranslateUI,BlinkGenPropertyTrees")
+chrome_options.add_argument("--disable-ipc-flooding-protection")
+chrome_options.add_argument("--disable-renderer-backgrounding")
+chrome_options.add_argument("--enable-features=NetworkService,NetworkServiceInProcess")
+chrome_options.add_argument("--force-color-profile=srgb")
+chrome_options.add_argument("--hide-scrollbars")
+chrome_options.add_argument("--metrics-recording-only")
+chrome_options.add_argument("--mute-audio")
+chrome_options.add_argument("--headless")
+chrome_options.add_argument("--no-sandbox")
 
-    pattern = r'<div class="stats-data-value">(.*?)</div>'
-    matches = re.findall(pattern, html, re.DOTALL)
-    if len(matches) == 2 or (len(matches) == 1 and "has been reached" in html):
-        result = matches[0].replace('&nbsp;', '')
-        return result.replace(' ', '')
-    return "0₴"
-
-async def get_rendered_html(url: str) -> str:
-    endpoint = "https://production-sfo.browserless.io/chromium/bql"
-
-    query = """
-    mutation GetHtml($url: String!) {
-        goto(url: $url waitUntil: interactiveTime) {
-            status
-        }
-
-        
-        html(selector: "body") {
-            html
-        }
-    }
-    """
-
-    variables = {
-        "url": f"{url}"
-    }
-
-    data = await send_post_async(
-        f"{endpoint}?token={BROWSERLESS_TOKEN}",
-        json={"query": query, "variables": variables}
+def get_jar_amount(url: str) -> str:
+    driver = webdriver.Remote(
+        command_executor="https://browserless-production-dadb.up.railway.app/webdriver",
+        options=chrome_options
     )
-    html_content = data.get("data", {}).get("html", "")
-    return html_content['html']
+
+    driver.get(url)
+    driver.implicitly_wait(5)
+    try:
+        amount = driver.find_element(By.CLASS_NAME, "stats-data-value").text.replace(' ', '')
+    except:
+        amount = "0₴"
+
+    driver.quit()
+    return amount
+
+# async wrapper
+async def get_jar_amount_async(url: str) -> str:
+    return await asyncio.to_thread(get_jar_amount, url)
 
 
-async def send_post_async(url, json):
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=json) as response:
-            return await response.json()
+    

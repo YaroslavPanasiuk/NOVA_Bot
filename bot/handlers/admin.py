@@ -14,7 +14,7 @@ from bot.utils.formatters import format_profile, format_user_list, format_profil
 from bot.utils.texts import *
 from bot.utils.files import reupload_as_photo
 from bot.utils.spreadsheets import export_users_to_sheet
-from bot.utils.fetch_urls import get_jar_amount
+from bot.utils.fetch_urls import get_jar_amount_async
 
 router = Router()
 
@@ -573,7 +573,7 @@ async def fetch_jars(message: Message):
     for user in users:
         jar_url = user['jar_url']
         if jar_url and len(jar_url) > 0:
-            amount = await get_jar_amount(jar_url)
+            amount = await get_jar_amount_async(jar_url)
         else:
             amount = "0₴"
         await database.set_jar_amount(user['telegram_id'], amount)
@@ -588,7 +588,7 @@ async def refresh_jars_progress(bot):
     for user in users:
         jar_url = user['jar_url']
         if jar_url and len(jar_url) > 0:
-            amount = await get_jar_amount(jar_url)
+            amount = await get_jar_amount_async(jar_url)
         else:
             amount = "0₴"
         await database.set_jar_amount(user['telegram_id'], amount)
