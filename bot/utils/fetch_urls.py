@@ -32,7 +32,19 @@ def get_jar_amount(url: str) -> str:
     driver.get(url)
     driver.implicitly_wait(5)
     try:
-        amount = driver.find_element(By.CLASS_NAME, "stats-data-value").text.replace(' ', '')
+        elements = driver.find_elements(By.CLASS_NAME, "stats-data-value")
+        if len(elements) > 2:
+            amount = "0₴"
+        if len(elements) == 0:
+            amount = "0₴"
+        if len(elements) == 2:
+            amount = elements[1].text.replace(' ', '')
+        
+        jar_is_closed = len(driver.find_elements(By.CLASS_NAME, "done-jar-status-subtext")) > 0
+        if jar_is_closed:
+            amount = elements[1].text.replace(' ', '')
+        else:
+            amount = "0₴"
     except:
         amount = "0₴"
 
