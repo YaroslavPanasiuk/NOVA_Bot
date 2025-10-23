@@ -573,13 +573,13 @@ async def fetch_jars(message: Message):
     for user in users:
         jar_url = user['jar_url']
         if jar_url and len(jar_url) > 0:
-            amount = await get_jar_amount_async(jar_url)
+            amount = await get_jar_amount_async(jar_url, user["jar_amount"])
         else:
             amount = "0₴"
         await database.set_jar_amount(user['telegram_id'], amount)
         text += f"{user['default_name']} (@{user['username']}): {amount} <a href='{jar_url}'>банка</a>\n"
         await new_msg.edit_text(text, parse_mode='html')
-    await export_users_to_sheet(users)
+    await export_users_to_sheet()
 
 
 async def refresh_jars_progress(bot):
@@ -588,7 +588,7 @@ async def refresh_jars_progress(bot):
     for user in users:
         jar_url = user['jar_url']
         if jar_url and len(jar_url) > 0:
-            amount = await get_jar_amount_async(jar_url)
+            amount = await get_jar_amount_async(jar_url, user["jar_amount"])
         else:
             amount = "0₴"
         await database.set_jar_amount(user['telegram_id'], amount)

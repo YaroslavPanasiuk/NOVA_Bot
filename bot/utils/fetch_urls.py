@@ -28,36 +28,38 @@ chrome_options.add_argument("--headless")
 chrome_options.add_argument("--no-sandbox")
 
 
-def get_jar_amount(url: str) -> str:
-    driver = webdriver.Remote(
-        command_executor="https://browserless-production-dadb.up.railway.app/webdriver",
-        options=chrome_options
-    )
-
-    driver.get(url)
-    driver.implicitly_wait(10)
+def get_jar_amount(url: str, previous_amount: str) -> str:
+    driver = None
+    amount = previous_amount
     try:
+        driver = webdriver.Remote(
+            command_executor="https://browserless-production-dadb.up.railway.app/webdriver",
+            options=chrome_options
+        )
+        driver.get(url)
+        driver.implicitly_wait(10)
         elements = driver.find_elements(By.CLASS_NAME, "stats-data-value")
-        if len(elements) == 0 or len(elements) > 2:
-            return "0₴"
         if len(elements) == 2:
-            return elements[0].text.replace(' ', '')
-        amount = "0₴"
-        jar_is_closed = len(driver.find_elements(By.CLASS_NAME, "done-jar-status-subtext")) > 0
-        if jar_is_closed:
             amount = elements[0].text.replace(' ', '')
-
-    except:
-        amount = "0₴"
-
-    driver.quit()
+        elif len(elements) == 1:
+            jar_is_closed = len(driver.find_elements(By.CLASS_NAME, "done-jar-status-subtext")) > 0
+            if jar_is_closed:
+                amount = elements[0].text.replace(' ', '')
+    except Exception:
+        amount = previous_amount
+    finally:
+        if driver:
+            driver.quit()
     return amount
 
 
 # async wrapper
-async def get_jar_amount_async(url: str) -> str:
+async def get_jar_amount_async(url: str, previous_amount="0₴") -> str:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(executor, get_jar_amount, url)
-
-
-    
+    try:
+        return await asyncio.wait_for(
+            loop.run_in_executor(executor, get_jar_amount, url, previous_amount),
+            timeout=60.0
+        )
+    except asyncio.TimeoutError:
+        return previous_amount
