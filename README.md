@@ -1,6 +1,6 @@
 # NovaBot
 
-NovaBot is a sophisticated Telegram bot designed to manage a mentorship and fundraising program. It facilitates the registration of participants and mentors, tracks fundraising progress through Monobank Jars, and provides a role-based system for administration, mentorship, and participation.
+Telegram bot designed to manage a mentorship and fundraising program. It facilitates the registration of participants and mentors, tracks fundraising progress through Monobank Jars, and provides a role-based system for administration, mentorship, and participation.
 
 ## About The Project
 
