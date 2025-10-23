@@ -347,7 +347,7 @@ async def get_all_users():
         rows = await conn.fetch("""
             SELECT *
             FROM bot_users
-            ORDER BY created_at
+            ORDER BY role, created_at
         """)
         return [dict(r) for r in rows]
 
