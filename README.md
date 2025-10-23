@@ -12,8 +12,7 @@ This bot is built to streamline the organization of a fundraising event. It auto
     - **Admins:** Have full control over the bot, including user management, mentor approval, and content distribution.
     - **Mentors:** Can register, get approved by admins, and manage a team of participants.
     - **Participants:** Can register, choose a mentor, and set up their fundraising profile.
-- **Multi-Step Registration:** A guided, stateful registration process for both mentors and participants.
-- **Profile Management:** Users can set up and manage their profiles with details like name, Instagram handle, fundraising goal, and a profile photo.
+- **Multi-Step Registration**
 - **Fundraising Tracking:** The bot automatically fetches the current amount from a user's Monobank Jar URL to track their fundraising progress.
 - **Mentor-Participant Matching:** Participants can browse through a list of approved mentors and choose one to join their team.
 - **Admin Panel:** A set of commands for admins to:
