@@ -2,6 +2,10 @@ from bot.config import BROWSERLESS_TOKEN
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+# Create a single-threaded executor
+executor = ThreadPoolExecutor(max_workers=1)
 
 chrome_options = webdriver.ChromeOptions()
 chrome_options.set_capability('browserless:token', BROWSERLESS_TOKEN)
@@ -22,6 +26,7 @@ chrome_options.add_argument("--metrics-recording-only")
 chrome_options.add_argument("--mute-audio")
 chrome_options.add_argument("--headless")
 chrome_options.add_argument("--no-sandbox")
+
 
 def get_jar_amount(url: str) -> str:
     driver = webdriver.Remote(
@@ -48,9 +53,11 @@ def get_jar_amount(url: str) -> str:
     driver.quit()
     return amount
 
+
 # async wrapper
 async def get_jar_amount_async(url: str) -> str:
-    return await asyncio.to_thread(get_jar_amount, url)
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(executor, get_jar_amount, url)
 
 
     
