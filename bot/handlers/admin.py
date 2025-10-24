@@ -6,10 +6,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from asyncpg.exceptions import ForeignKeyViolationError
 from bot.db import database
-from bot.config import ADMINS, DB_CHAT_ID, TECH_SUPPORT_ID
+from bot.config import ADMINS, DB_CHAT_ID, SHEET_KEY
 from aiogram.filters import Command
 from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb, select_user_for_design_kb
-from bot.keyboards.common import role_choice_kb
+from bot.keyboards.common import role_choice_kb, url_kb
 from bot.utils.formatters import format_profile, format_user_list, format_profile_image
 from bot.utils.texts import *
 from bot.utils.files import reupload_as_photo
@@ -598,6 +598,39 @@ async def refresh_jars_progress(bot):
             text = ""
     await bot.send_message(chat_id=ADMINS[0], text=text, parse_mode='html')
     await export_users_to_sheet()
+
+
+async def refresh_jars_silent():
+    users = await database.get_all_users()
+    for user in users:
+        jar_url = user['jar_url']
+        if jar_url and len(jar_url) > 0:
+            amount = await get_jar_amount_async(jar_url, user["jar_amount"])
+        else:
+            amount = "0₴"
+        await database.set_jar_amount(user['telegram_id'], amount)
+    await export_users_to_sheet()
+
+
+@router.message((F.text == "/summarize_mentors_progress") | ( F.text == SUMMARIZE_MENTORS_JARS_BUTTON))
+async def summirize_mentors_progress(message: Message):
+    if str(message.from_user.id) not in ADMINS:
+        return await message.answer(NOT_ADMIN)
+    mentors = await database.get_mentors()
+    text = "Ось банки менторів:\n"
+    total_amount = 0
+    for mentor in mentors:
+        try: 
+            jar_amount = mentor['jar_amount'].replace('₴', '')
+        except Exception:
+            jar_amount = '0'
+        if not jar_amount or jar_amount == "0":
+            jar_amount = "0"
+        
+        total_amount += float(jar_amount)
+        text += f"{mentor['default_name']} (@{mentor['username']}): {jar_amount}₴\n\n"
+    text += f"Загальна сума: {total_amount:.2f}₴"
+    await message.answer(text=text, reply_markup=url_kb("Перейти до таблиці", f"https://docs.google.com/spreadsheets/d/{SHEET_KEY}/edit?gid=856724575"))
 
 
 @router.message(F.text.startswith("/team_of"))

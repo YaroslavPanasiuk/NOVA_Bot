@@ -222,7 +222,7 @@ async def format_spreadsheets_data(users):
         team = ""
 
         try: 
-            jar_amount = u['jar_amount'][:-1]
+            jar_amount = u['jar_amount'].replace('₴', '')
             #jar_amount = jar_amount.replace('.', ',')
         except Exception:
             jar_amount = '0'
