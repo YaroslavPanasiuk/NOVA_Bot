@@ -584,7 +584,7 @@ async def fetch_jars(message: Message):
 
 async def refresh_jars_progress(bot):
     users = await database.get_all_users()
-    text = "Ось список користувачів та їх актуальні суми на банках:\n"
+    text = "Ось список користувачів та їх актуальні суми на банках:\n\n"
     for user in users:
         jar_url = user['jar_url']
         if jar_url and len(jar_url) > 0:

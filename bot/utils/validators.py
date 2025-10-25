@@ -2,7 +2,7 @@ import re
 from decimal import Decimal, InvalidOperation
 
 def instagram_valid(username: str) -> bool:
-    pattern = r"^[a-zA-Z_](?!.*?\.{2})[\w.]{1,28}[\w]$"
+    pattern = r"^[a-zA-Z_1-9](?!.*?\.{2})[\w.]{1,28}[\w]$"
     return re.fullmatch(pattern, username) is not None
 
 def monobank_jar_valid(url: str) -> bool:
