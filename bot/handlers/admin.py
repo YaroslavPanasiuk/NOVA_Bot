@@ -238,7 +238,7 @@ async def user_profile_reply_cmd(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message((F.text == "/send_design" ) | ( F.text == SEND_DESIGN_BUTTON))
+@router.message((F.text("/send_design") ) | ( F.text == SEND_DESIGN_BUTTON))
 async def answer_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
@@ -260,8 +260,12 @@ async def design_profile_reply_cmd(message: Message, state: FSMContext):
         await message.answer('Щось не почув тебе. Можеш повторити?')
         await state.clear()
         return
-
-    username = message.text.strip()
+    await state.update_data(send_design_msg=True)
+    parts = message.text.split()
+    if len(parts) == 2 and parts[1] == "no_message":
+        print('no message')
+        await state.update_data(send_design_msg=False)
+    username = parts[0].strip()
     username = username.lstrip('@')
 
     user = await database.get_user_by_username(username)
@@ -324,7 +328,9 @@ async def photo_compressed(message: Message, state: FSMContext):
     file_id = message.document.file_id
     data = await state.get_data()
     user_id = data.get("selected_user_id")
+    send_message = data.get("send_design_msg", True)
     print(user_id)
+    print(f"got animation, send_message={send_message}")
     user = await database.get_user_by_id(user_id)
     
     if not user:
@@ -332,11 +338,12 @@ async def photo_compressed(message: Message, state: FSMContext):
         return
     await database.set_design_animation(user_id, file_id)
     try:
-        caption = SEND_DESIGN_PROMPT
-        await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)
-        await message.bot.send_animation(chat_id=user_id, animation=file_id, caption=caption, parse_mode='HTML')
-        await message.answer("✅ Дизайн надіслано.")
-        await export_users_to_sheet()
+        if send_message:
+            caption = SEND_DESIGN_PROMPT
+            await message.bot.send_message(chat_id=user_id, text=DESIGN_SENT)
+            await message.bot.send_animation(chat_id=user_id, animation=file_id, caption=caption, parse_mode='HTML')
+            await message.answer("✅ Дизайн надіслано.")
+            await export_users_to_sheet()
     except Exception as e:
         await message.answer(f"⚠️ Не вдалося надіслати дизайн: {e}")
 
