@@ -238,7 +238,7 @@ async def user_profile_reply_cmd(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message((F.text("/send_design") ) | ( F.text == SEND_DESIGN_BUTTON))
+@router.message((F.text == ("/send_design") ) | ( F.text == SEND_DESIGN_BUTTON))
 async def answer_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
