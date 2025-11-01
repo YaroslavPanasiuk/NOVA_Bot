@@ -326,6 +326,30 @@ async def get_approved_mentors():
             SELECT *
             FROM bot_users
             WHERE role='mentor' AND status='approved'
+            ORDER BY created_at
+        """)
+        return [dict(r) for r in rows]
+
+# Fetch approved participants
+async def get_approved_participants():
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        rows = await conn.fetch("""
+            SELECT *
+            FROM bot_users
+            WHERE role='participant' AND status='approved'
+            ORDER BY created_at
+        """)
+        return [dict(r) for r in rows]
+
+# Fetch approved mentors
+async def get_approved_mentors():
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        rows = await conn.fetch("""
+            SELECT *
+            FROM bot_users
+            WHERE role='mentor' AND status='approved'
             ORDER BY created_at;
         """)
         return [dict(r) for r in rows]

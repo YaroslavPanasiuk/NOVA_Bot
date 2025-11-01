@@ -6,15 +6,16 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from asyncpg.exceptions import ForeignKeyViolationError
 from bot.db import database
-from bot.config import ADMINS, DB_CHAT_ID, SHEET_KEY
+from bot.config import ADMINS, DB_CHAT_ID, SHEET_KEY, TECH_SUPPORT_ID
 from aiogram.filters import Command
-from bot.keyboards.admin import pending_mentors_kb, mentor_action_kb, select_user_kb, select_user_for_design_kb
+from bot.keyboards.admin import *
 from bot.keyboards.common import role_choice_kb, url_kb
 from bot.utils.formatters import format_profile, format_user_list, format_profile_image
 from bot.utils.texts import *
 from bot.utils.files import reupload_as_photo
 from bot.utils.spreadsheets import export_users_to_sheet
 from bot.utils.fetch_urls import get_jar_amount_async
+from bot.utils.broadcast import broadcast_message
 
 router = Router()
 
@@ -27,6 +28,7 @@ class AdminProfile(StatesGroup):
     add_animation = State()
     waiting_for_username = State()
     username_for_design = State()
+    waiting_for_message = State()
 
 @router.message((F.text == "/list_users" ) | ( F.text == LIST_USERS_BUTTON))
 async def list_users_cmd(message: Message):
@@ -238,7 +240,7 @@ async def user_profile_reply_cmd(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message((F.text == ("/send_design") ) | ( F.text == SEND_DESIGN_BUTTON))
+@router.message((F.text == "/send_design" ) | ( F.text == SEND_DESIGN_BUTTON))
 async def answer_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
@@ -668,3 +670,46 @@ async def list_pending_participants(message: Message):
             await message.answer(text, parse_mode='html')
             text = ""
     await message.answer(text, parse_mode='html')
+
+
+@router.message((F.text == "/send_messages") | (F.text == SEND_MESSAGES_BUTTON))
+async def send_messages_cmd(message: Message):
+    if str(message.from_user.id) != TECH_SUPPORT_ID and str(message.from_user.id) not in ADMINS:
+        await message.answer(NOT_ADMIN)
+        return
+    kb = send_messages_kb()
+    await message.answer(SELECT_USERS, reply_markup=kb)
+
+
+@router.callback_query(F.data.startswith("send_messages:"))
+async def message_text(callback: CallbackQuery, state: FSMContext):
+    receivers = callback.data.split(":")[1]
+    if receivers == "all":
+        users = await database.get_all_users()
+    elif receivers == "mentors":
+        users = await database.get_approved_mentors()
+    elif receivers == "participants":
+        users = await database.get_approved_participants()
+    await state.update_data(selected_users=users)
+    await state.set_state(AdminProfile.waiting_for_message)
+    await callback.message.answer(f"✍️ Напиши текст повідомлення для обраних користувачів (відмінити - /cancel)")
+    await callback.answer()
+
+
+@router.message(AdminProfile.waiting_for_message, F.text)
+async def send_message(message: Message, state: FSMContext):
+    data = await state.get_data()
+    users = data.get("selected_users")
+    if not users:
+        await message.answer("⚠️ Користувачів не знайдено.")
+        await state.clear()
+        return
+
+    await broadcast_message(
+        bot=message.bot,
+        message_text=message.text,
+        user_list=users,
+        sender_id=message.from_user.id
+    )
+
+    await state.clear()
