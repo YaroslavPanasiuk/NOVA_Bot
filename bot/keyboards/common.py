@@ -137,6 +137,7 @@ def menu_kb(user) -> InlineKeyboardMarkup:
         buttons.append([KeyboardButton(text=USER_PROFILE_BUTTON), KeyboardButton(text=SEND_DESIGN_BUTTON)])
         buttons.append([KeyboardButton(text=SUMMARIZE_MENTORS_JARS_BUTTON)])
         buttons.append([KeyboardButton(text=SEND_MESSAGES_BUTTON)])
+        buttons.append([KeyboardButton(text=SEND_MESSAGE_BUTTON)])
        
     if str(user['telegram_id']) == TECH_SUPPORT_ID:
         buttons.append([KeyboardButton(text=LIST_QUESTIONS_BUTTON), KeyboardButton(text=ANSWER_BUTTON)])
