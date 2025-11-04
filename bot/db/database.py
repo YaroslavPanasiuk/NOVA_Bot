@@ -382,20 +382,24 @@ async def get_all_users_sorted(key: str):
         rows = await conn.fetch(f"""
             SELECT *
             FROM bot_users
-            ORDER BY {key}, role, created_at
+            ORDER BY {key}
         """)
         return [dict(r) for r in rows]
 
-# Get all users
+# Get users for sending design
 async def get_users_with_no_design():
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")
-        rows = await conn.fetch("""
-            SELECT *
-            FROM bot_users
-            WHERE design_uncompressed IS NULL AND design_video IS NULL
-            ORDER BY created_at;
+        rows = await conn.fetch(f"""
+            SELECT * FROM bot_users 
+            WHERE design_compressed IS NULL 
+            AND design_uncompressed IS NULL 
+            AND design_video IS NULL 
+            AND design_animation IS NULL 
+            ORDER BY status, created_at DESC;
+
         """)
+        #print(list(map(lambda row: row[2],rows)))
         return [dict(r) for r in rows]
 
 # Get pending mentors

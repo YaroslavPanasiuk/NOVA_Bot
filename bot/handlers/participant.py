@@ -1,8 +1,9 @@
-from aiogram import Router, F
+from aiogram import Bot, Router, F
 from aiogram.types import Message, CallbackQuery, InputMediaPhoto, InputMediaVideo, InputMediaAnimation
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramBadRequest
+from bot.config import ADMINS
 from bot.db import database
 from decimal import Decimal
 from bot.utils.formatters import format_profile, format_profile_image, format_design_preference, format_design_photos, format_mentor_profile_view
@@ -254,10 +255,27 @@ async def participant_confirm(callback: CallbackQuery, state: FSMContext):
         text = await format_profile(callback.from_user.id)
         kb = confirm_kb(f'approve_participant:{callback.from_user.id}')
         await callback.bot.send_document(data["mentor_id"], document=data["photo_url"], caption=text, reply_markup=kb, parse_mode="HTML")
+        await notify_admins(callback.bot, callback.from_user.id)
     else:
         await callback.message.answer(PROFILE_CANCELLED)
     await state.clear()
     await callback.answer() 
+
+
+async def notify_admins(bot: Bot, user_id: int):
+    user = await database.get_user_by_id(user_id)
+    if not user:
+        print(USER_NOT_FOUND)
+        return
+    
+    text = await format_profile(user_id)
+    document = await format_profile_image(user_id)
+    for admin_id in ADMINS:
+        try:
+            await bot.send_message(admin_id, NEW_PARTICIPANT_REGISTERED)
+            await bot.send_document(admin_id, document=document, caption=text, parse_mode="HTML")
+        except Exception as e:
+            print(f"Failed to notify admin {admin_id}: {e}")
 
 
 @router.message((F.text.startswith("/mentor") ) | ( F.text == MENTOR_BUTTON))
