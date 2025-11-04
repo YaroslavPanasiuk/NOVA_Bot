@@ -51,7 +51,7 @@ def select_user_for_design_kb(users, callback, page=0, page_size=20):
     buttons = []
     for user in users[start:end]:
         appendix = ""
-        if user['design_uncompressed'] or user['design_compressed'] or user['design_video']:
+        if user['design_uncompressed'] or user['design_compressed'] or user['design_video'] or user['design_animation']:
             appendix = "✅"
         buttons.append([InlineKeyboardButton(
             text=f"{user['first_name']} {user.get('last_name', '')} (@{user.get('username', '')}) {appendix}".strip(),

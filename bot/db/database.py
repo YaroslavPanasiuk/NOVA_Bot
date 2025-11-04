@@ -376,6 +376,17 @@ async def get_all_users():
         return [dict(r) for r in rows]
 
 # Get all users
+async def get_all_users_sorted(key: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        rows = await conn.fetch(f"""
+            SELECT *
+            FROM bot_users
+            ORDER BY {key}, role, created_at
+        """)
+        return [dict(r) for r in rows]
+
+# Get all users
 async def get_users_with_no_design():
     async with pool.acquire() as conn:
         await conn.execute(f"SET search_path TO {DATABASE_NAME};")

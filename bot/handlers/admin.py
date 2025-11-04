@@ -246,7 +246,7 @@ async def answer_cmd(message: Message, state: FSMContext):
         await message.answer(NOT_ADMIN)
         return
     
-    users = await database.get_all_users()
+    users = await database.get_all_users_sorted(key="design_uncompressed DESC, design_compressed DESC, design_video DESC, design_animation DESC")
     kb = select_user_for_design_kb(users, "design", page_size=20)
     await message.answer(SELECT_USER, reply_markup=kb)
     await message.answer(ENTER_USERNAME)
@@ -285,7 +285,7 @@ async def design_profile_reply_cmd(message: Message, state: FSMContext):
 async def paginate_users(callback: CallbackQuery):
     callback_data = callback.data.split(":")[1]
     page = int(callback.data.split(":")[2])
-    users = await database.get_all_users()
+    users = await database.get_all_users_sorted(key="design_uncompressed DESC, design_compressed DESC, design_video DESC, design_animation DESC")
     kb = select_user_for_design_kb(users, callback=callback_data, page=page, page_size=20)
     await callback.message.edit_reply_markup(reply_markup=kb)
     await callback.answer()
