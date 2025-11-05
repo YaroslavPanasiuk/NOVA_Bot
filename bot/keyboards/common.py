@@ -132,17 +132,14 @@ def menu_kb(user) -> InlineKeyboardMarkup:
         buttons.append([KeyboardButton(text=MENTOR_BUTTON)])
         buttons.append([KeyboardButton(text=RESTART_BUTTON)])
     if str(user['telegram_id']) in ADMINS:
-        buttons.append([KeyboardButton(text=LIST_USERS_BUTTON), KeyboardButton(text=LIST_MENTORS_BUTTON)])
-        buttons.append([KeyboardButton(text=PENDING_MENTORS_BUTTON), KeyboardButton(text=REMOVE_USER_BUTTON)])
+        buttons.append([KeyboardButton(text=PENDING_MENTORS_BUTTON), KeyboardButton(text=SUMMARIZE_MENTORS_JARS_BUTTON)])
         buttons.append([KeyboardButton(text=USER_PROFILE_BUTTON), KeyboardButton(text=SEND_DESIGN_BUTTON)])
-        buttons.append([KeyboardButton(text=SUMMARIZE_MENTORS_JARS_BUTTON)])
-        buttons.append([KeyboardButton(text=SEND_MESSAGES_BUTTON)])
-        buttons.append([KeyboardButton(text=SEND_MESSAGE_BUTTON)])
+        buttons.append([KeyboardButton(text=SEND_MESSAGES_BUTTON), KeyboardButton(text=SEND_MESSAGE_BUTTON)])
+        buttons.append([KeyboardButton(text=SEND_QUESTION_BUTTON)])
+        buttons.append([KeyboardButton(text=UNFINISHED_REGISTRATIONS_BUTTON)])
        
     if str(user['telegram_id']) == TECH_SUPPORT_ID:
         buttons.append([KeyboardButton(text=LIST_QUESTIONS_BUTTON), KeyboardButton(text=ANSWER_BUTTON)])
-    if str(user['telegram_id']) in ADMINS or str(user['telegram_id']) == TECH_SUPPORT_ID:
-        buttons.append([KeyboardButton(text=UNFINISHED_REGISTRATIONS_BUTTON)])
     
     buttons.append([KeyboardButton(text=HELP_BUTTON)])
     print(len(buttons))

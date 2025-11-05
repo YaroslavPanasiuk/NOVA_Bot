@@ -8,13 +8,14 @@ from aiogram.fsm.context import FSMContext
 from bot.handlers.participant import start_participant
 from bot.handlers.mentor import start_mentor
 from bot.utils.formatters import format_profile, format_profile_image
-from bot.utils.texts import WELCOME, SELECT_ROLE, UNKNOWN_ROLE, USER_NOT_REGISTERED, RESTART_PROMPT, MENU_PROMPT, MENTOR_COMMANDS, PARTICIPANT_COMMANDS, ADMIN_COMMANDS, ALREADY_REGISTERED_MENTOR, SHARE_PHONE, HELP_PROMPT, HELP_REQUESTED_PROMPT, TECH_SUPPORT_COMMANDS, SUGGEST_ANSWER_COMMAND, CANCELED, RESTART_BUTTON, PROFILE_BUTTON, HELP_BUTTON, CANCEL_REGISTRATION_BUTTON
+from bot.utils.texts import *
 from bot.config import TECH_SUPPORT_ID
 
 router = Router()
 
 class GeneralStates(StatesGroup):
     help = State()
+    waiting_for_response = State()
 
 @router.message(Command("start"))
 async def start_cmd(message: Message):
@@ -152,4 +153,24 @@ async def send_help_message(message: Message, state: FSMContext):
 @router.message((F.text == "/chat_id" ))
 async def show_help(message: Message, state: FSMContext):
     await message.answer(str(message.chat.id))
+
+@router.message(GeneralStates.waiting_for_response)
+async def send_reponse_back(message: Message, state: FSMContext):
+    print("Sending response back")
+    user = await database.get_user_by_id(message.from_user.id)
+    if not user:
+        return
+    data = await state.get_data()
+    print(data)
+    sender_id = data.get("sender_id")
+
+    sender_message = data.get("sender_message")
+    if not sender_id:
+        return
+    await message.bot.send_message(sender_id, text=f"{user['first_name']} {user['last_name']} (@{user['username']}) Відповів на твоє повідомлення ({sender_message}):")
+    await message.forward(chat_id=sender_id)
+    await message.answer(RESPONSE_RECEIVED_PROMPT)
+
+    await state.clear()
+
 
