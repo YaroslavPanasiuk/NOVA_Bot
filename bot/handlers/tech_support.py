@@ -17,10 +17,12 @@ class TechSupportStates(StatesGroup):
     waiting_for_answer = State()
     waiting_for_message = State()
     waiting_for_question = State()
+    username_for_message = State()
+    username_for_question = State()
 
 @router.message((F.text == "/list_questions" ) | ( F.text == LIST_QUESTIONS_BUTTON))
 async def list_questions_cmd(message: Message):
-    if str(message.from_user.id) != TECH_SUPPORT_ID:
+    if str(message.from_user.id) != TECH_SUPPORT_ID and str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
 
@@ -92,7 +94,7 @@ async def send_answer(message: Message, state: FSMContext):
 
 
 @router.message((F.text == "/send_message") | (F.text == SEND_MESSAGE_BUTTON))
-async def send_message_cmd(message: Message):
+async def send_message_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) != TECH_SUPPORT_ID and str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
@@ -102,11 +104,35 @@ async def send_message_cmd(message: Message):
         await message.answer(USER_NOT_FOUND)
         return
     kb = select_user_kb(users, 'send_message', page_size=20)
-    await message.answer(SELECT_USER, reply_markup=kb)@router.message((F.text == "/send_message") | (F.text == SEND_MESSAGE_BUTTON))
+    await message.answer(SELECT_USER, reply_markup=kb)
+    await message.answer(ENTER_USERNAME)
+    await state.set_state(TechSupportStates.username_for_message)
+
+
+@router.message(TechSupportStates.username_for_message, F.text)
+async def send_message_to_user(message: Message, state: FSMContext):
+    if str(message.from_user.id) not in ADMINS and str(message.from_user.id) != TECH_SUPPORT_ID:
+        await message.answer(NOT_ADMIN)
+        return
+    if not message.text.startswith('@'):
+        await message.answer('Щось не почув тебе. Можеш повторити?')
+        await state.clear()
+        return
+    username = message.text.lstrip('@')
+
+    user = await database.get_user_by_username(username)
+    user_id = user['telegram_id']
+
+    await state.update_data(selected_user_id=user_id)
+    await state.set_state(TechSupportStates.waiting_for_message)
+    photo = await format_profile_image(user_id)
+    text = await format_profile(user_id)
+    await message.answer_document(document=photo, caption=text)
+    await message.answer(f"✍️ Напиши своє повідомлення для @{user['username']} (відмінити - /cancel)")
 
 
 @router.message((F.text == "/send_question") | (F.text == SEND_QUESTION_BUTTON))
-async def send_message_cmd(message: Message):
+async def send_message_cmd(message: Message, state: FSMContext):
     if str(message.from_user.id) != TECH_SUPPORT_ID and str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
@@ -117,6 +143,30 @@ async def send_message_cmd(message: Message):
         return
     kb = select_user_kb(users, 'send_question', page_size=20)
     await message.answer(SELECT_USER, reply_markup=kb)
+    await message.answer(ENTER_USERNAME)
+    await state.set_state(TechSupportStates.username_for_question)
+
+
+@router.message(TechSupportStates.username_for_question, F.text)
+async def send_question(message: Message, state: FSMContext):
+    if str(message.from_user.id) not in ADMINS and str(message.from_user.id) != TECH_SUPPORT_ID:
+        await message.answer(NOT_ADMIN)
+        return
+    if not message.text.startswith('@'):
+        await message.answer('Щось не почув тебе. Можеш повторити?')
+        await state.clear()
+        return
+    username = message.text.lstrip('@')
+
+    user = await database.get_user_by_username(username)
+    user_id = user['telegram_id']
+
+    await state.update_data(selected_user_id=user_id)
+    await state.set_state(TechSupportStates.waiting_for_question)
+    photo = await format_profile_image(user_id)
+    text = await format_profile(user_id)
+    await message.answer_document(document=photo, caption=text)
+    await message.answer(f"✍️ Напиши своє запитання для @{user['username']} (відмінити - /cancel)")
 
 
 @router.callback_query((F.data.startswith("page:send_message")) | (F.data.startswith("page:send_question")))

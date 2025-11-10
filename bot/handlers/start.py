@@ -1,3 +1,4 @@
+import asyncio
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile, ReplyKeyboardRemove
 from aiogram.filters import Command
@@ -9,7 +10,7 @@ from bot.handlers.participant import start_participant
 from bot.handlers.mentor import start_mentor
 from bot.utils.formatters import format_profile, format_profile_image
 from bot.utils.texts import *
-from bot.config import TECH_SUPPORT_ID
+from bot.config import TECH_SUPPORT_ID, ADMINS
 
 router = Router()
 
@@ -147,6 +148,11 @@ async def send_help_message(message: Message, state: FSMContext):
     await message.bot.send_message(TECH_SUPPORT_ID, text=f"{user['first_name']} {user['last_name']} (@{user['username']}) Має питання:")
     await message.forward(chat_id=TECH_SUPPORT_ID)
     await message.bot.send_message(TECH_SUPPORT_ID, text=SUGGEST_ANSWER_COMMAND)
+    for id in ADMINS:
+        await message.bot.send_message(id, text=f"{user['first_name']} {user['last_name']} (@{user['username']}) Має питання:")
+        await message.forward(chat_id=id)
+        await message.bot.send_message(id, text=SUGGEST_ANSWER_COMMAND)
+        asyncio.sleep(0.5)
     await message.answer(HELP_REQUESTED_PROMPT)
 
 
