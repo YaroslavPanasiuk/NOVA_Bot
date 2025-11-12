@@ -135,10 +135,11 @@ def menu_kb(user) -> InlineKeyboardMarkup:
         buttons.append([KeyboardButton(text=PENDING_MENTORS_BUTTON), KeyboardButton(text=SUMMARIZE_MENTORS_JARS_BUTTON)])
         buttons.append([KeyboardButton(text=USER_PROFILE_BUTTON), KeyboardButton(text=SEND_DESIGN_BUTTON)])
         buttons.append([KeyboardButton(text=SEND_MESSAGES_BUTTON), KeyboardButton(text=SEND_MESSAGE_BUTTON)])
-        buttons.append([KeyboardButton(text=SEND_QUESTION_BUTTON), KeyboardButton(text=UNFINISHED_REGISTRATIONS_BUTTON)])
+        buttons.append([KeyboardButton(text=SEND_QUESTION_BUTTON)])
        
     if str(user['telegram_id']) == TECH_SUPPORT_ID or str(user['telegram_id']) in ADMINS:
         buttons.append([KeyboardButton(text=LIST_QUESTIONS_BUTTON), KeyboardButton(text=ANSWER_BUTTON)])
+        buttons.append([KeyboardButton(text=UNFINISHED_REGISTRATIONS_BUTTON)])
     
     buttons.append([KeyboardButton(text=HELP_BUTTON)])
     print(len(buttons))

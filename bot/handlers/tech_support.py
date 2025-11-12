@@ -179,6 +179,16 @@ async def paginate_users(callback: CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query((F.data.startswith("page:remind_to_register")))
+async def paginate_users(callback: CallbackQuery):
+    callback_data = callback.data.split(":")[1]
+    page = int(callback.data.split(":")[2])
+    users = await database.get_unfinished_registrations()
+    kb = select_user_kb(users, callback=callback_data, page=page, page_size=12)
+    await callback.message.edit_reply_markup(reply_markup=kb)
+    await callback.answer()
+
+
 @router.callback_query(F.data.startswith("send_message:"))
 async def message_text(callback: CallbackQuery, state: FSMContext):
     user_id = int(callback.data.split(":")[1])
@@ -276,7 +286,7 @@ async def list_unfinished_registrations(message: Message):
         await message.answer(USER_NOT_FOUND)
         return
     
-    kb = select_user_kb(users, "remind_to_register")
+    kb = select_user_kb(users, "remind_to_register", page_size=12)
     await message.answer(
         "Учасники, які не завершили реєстрацію:",
         reply_markup=kb
@@ -287,7 +297,7 @@ async def list_unfinished_registrations(message: Message):
 async def message_text(callback: CallbackQuery, state: FSMContext):
     user_id = int(callback.data.split(":")[1])
     await state.update_data(selected_user_id=user_id)
-    kb = text_kb("Написати повідомлення", f'send_message:{user_id}')
+    kb = text_kb("Написати запитання", f'send_question:{user_id}')
     
     text = await format_profile(user_id)
     document = await format_profile_image(user_id)
