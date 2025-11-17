@@ -9,7 +9,7 @@ from bot.db import database
 from bot.config import ADMINS, DB_CHAT_ID, SHEET_KEY, TECH_SUPPORT_ID
 from aiogram.filters import Command
 from bot.keyboards.admin import *
-from bot.keyboards.common import role_choice_kb, url_kb
+from bot.keyboards.common import role_choice_kb, url_kb, text_kb
 from bot.utils.formatters import format_profile, format_user_list, format_profile_image
 from bot.utils.texts import *
 from bot.utils.files import reupload_as_photo
@@ -29,6 +29,7 @@ class AdminProfile(StatesGroup):
     waiting_for_username = State()
     username_for_design = State()
     waiting_for_message = State()
+    waiting_for_question = State()
 
 @router.message((F.text == "/list_users" ) | ( F.text == LIST_USERS_BUTTON))
 async def list_users_cmd(message: Message):
@@ -711,6 +712,52 @@ async def send_message(message: Message, state: FSMContext):
         message_text=message.text,
         user_list=users,
         sender_id=message.from_user.id
+    )
+
+    await state.clear()
+
+
+
+@router.message((F.text == "/ask_addresses"))
+async def send_messages_cmd(message: Message):
+    if str(message.from_user.id) != TECH_SUPPORT_ID and str(message.from_user.id) not in ADMINS:
+        await message.answer(NOT_ADMIN)
+        return
+    kb = send_messages_kb(callback_data_prefix="ask_addresses")
+    await message.answer(SELECT_USERS, reply_markup=kb)
+
+
+@router.callback_query(F.data.startswith("ask_addresses:"))
+async def message_text(callback: CallbackQuery, state: FSMContext):
+    receivers = callback.data.split(":")[1]
+    if receivers == "all":
+        users = await database.get_all_users()
+    elif receivers == "mentors":
+        users = await database.get_approved_mentors()
+    elif receivers == "participants":
+        users = await database.get_approved_participants()
+    await state.update_data(selected_users=users)
+    await state.set_state(AdminProfile.waiting_for_question)
+    await callback.message.answer(f"✍️ Напиши текст повідомлення для обраних користувачів (відмінити - /cancel)")
+    await callback.answer()
+
+
+@router.message(AdminProfile.waiting_for_question, F.text)
+async def send_message(message: Message, state: FSMContext):
+    data = await state.get_data()
+    users = data.get("selected_users")
+    if not users:
+        await message.answer("⚠️ Користувачів не знайдено.")
+        await state.clear()
+        return
+
+    kb = text_kb(text=ASK_FOR_ADDRESS_BUTTON, callback='set_address')
+    await broadcast_message(
+        bot=message.bot,
+        message_text=message.text,
+        user_list=users,
+        sender_id=message.from_user.id,
+        kb=kb
     )
 
     await state.clear()

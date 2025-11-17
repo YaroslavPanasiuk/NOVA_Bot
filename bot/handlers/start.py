@@ -17,6 +17,7 @@ router = Router()
 class GeneralStates(StatesGroup):
     help = State()
     waiting_for_response = State()
+    waiting_for_address = State()
 
 @router.message(Command("start"))
 async def start_cmd(message: Message):
@@ -179,4 +180,17 @@ async def send_reponse_back(message: Message, state: FSMContext):
 
     await state.clear()
 
+
+@router.callback_query(F.data == 'set_address')
+async def send_address(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(GeneralStates.waiting_for_address)
+    await callback.message.answer(ASK_FOR_ADDRESS_PROMPT)
+    await callback.answer()
+
+@router.message(GeneralStates.waiting_for_address, F.text)
+async def receive_address(message: Message, state: FSMContext):
+    address = message.text
+    await database.set_address(message.from_user.id, address)
+    await message.answer(ADDRESS_RECEIVED_PROMPT)
+    await state.clear()
 

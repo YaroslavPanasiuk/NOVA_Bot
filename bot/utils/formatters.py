@@ -198,7 +198,7 @@ async def format_design_photos():
 
 async def format_spreadsheets_data(users):
     print("✅ started")
-    headers = ["Ім'я", "Ім'я в телеграм", "Нікнейм", "Роль",  "Команда", "Інстаграм", "Банка", "Сума на банці", "Ціль", "Дизайн", "Номер телефону", "Час реєстрації"]
+    headers = ["Ім'я", "Ім'я в телеграм", "Нікнейм", "Роль",  "Команда", "Інстаграм", "Банка", "Сума на банці", "Ціль", "Дизайн", "Номер телефону", "Адреса Нової Пошти", "Час реєстрації"]
     rows = []
     role_map = {
         "mentor": "Амбасадор",
@@ -249,6 +249,7 @@ async def format_spreadsheets_data(users):
             float(u.get("fundraising_goal", 0)),
             design,
             u.get("phone_number", ""),
+            u.get("nova_post_address", ""),
             u.get("created_at", "").strftime("%Y-%m-%d %H:%M:%S")
         ])
     return headers, rows

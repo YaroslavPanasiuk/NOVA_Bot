@@ -1,10 +1,10 @@
 import asyncio
 from aiogram import Bot
 
-async def broadcast_message(bot: Bot, message_text: str, user_list: list[dict], sender_id: int = None):
+async def broadcast_message(bot: Bot, message_text: str, user_list: list[dict], sender_id: int = None, kb = None):
     for i, user in enumerate(user_list):
         try:
-            await bot.send_message(user['telegram_id'], message_text)
+            await bot.send_message(user['telegram_id'], message_text, reply_markup=kb)
         except Exception as e:
             print(f"Failed to send message to @{user['username']}: {e}")
             if sender_id:

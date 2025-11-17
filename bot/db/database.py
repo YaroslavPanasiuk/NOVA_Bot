@@ -26,6 +26,7 @@ async def init_db():
             description TEXT DEFAULT 'no description',
             status TEXT DEFAULT 'pending',
             mentor_id BIGINT REFERENCES bot_users(telegram_id),
+            nova_post_address TEXT DEFAULT '',
             design_preference TEXT DEFAULT '',
             photo_compressed TEXT,
             photo_uncompressed TEXT,
@@ -246,6 +247,21 @@ async def set_goal(telegram_id: int, goal: str):
         SET fundraising_goal=$1
         WHERE telegram_id=$2;
         """, goal, telegram_id)
+
+async def set_address(telegram_id: int, address: str):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        await conn.execute("""
+        UPDATE bot_users
+        SET nova_post_address=$1
+        WHERE telegram_id=$2;
+        """, address, telegram_id)
+
+async def get_address(telegram_id: int):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT nova_post_address FROM bot_users WHERE telegram_id=$1", telegram_id)
+        return row['nova_post_address'] if row else None
 
 
 async def update_created_at(telegram_id: int):

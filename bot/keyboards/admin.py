@@ -70,11 +70,11 @@ def select_user_for_design_kb(users, callback, page=0, page_size=20):
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def send_messages_kb():
+def send_messages_kb(callback_data_prefix="send_messages"):
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Надіслати всім користувачам", callback_data="send_messages:all")],
-            [InlineKeyboardButton(text="Надіслати лише учасникам", callback_data="send_messages:participants")],
-            [InlineKeyboardButton(text="Надіслати лише амбасадорам", callback_data="send_messages:mentors")]
+            [InlineKeyboardButton(text="Надіслати всім користувачам", callback_data=f"{callback_data_prefix}:all")],
+            [InlineKeyboardButton(text="Надіслати лише учасникам", callback_data=f"{callback_data_prefix}:participants")],
+            [InlineKeyboardButton(text="Надіслати лише амбасадорам", callback_data=f"{callback_data_prefix}:mentors")]
         ]
     )
