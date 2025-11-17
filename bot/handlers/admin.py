@@ -129,6 +129,7 @@ async def approve_mentor(callback: CallbackQuery):
     await callback.message.edit_reply_markup()
     caption = await format_profile(mentor_id) + f"\n{MENTOR_APPROVED}"
     await callback.message.edit_caption(caption=caption)
+    await callback.message.edit_reply_markup()
     await export_users_to_sheet()
     await callback.bot.send_message(chat_id=mentor_id, text=YOU_HAVE_BEEN_APPROVED_MENTOR)
     await callback.answer("Approved ✅")
@@ -144,6 +145,7 @@ async def reject_mentor(callback: CallbackQuery):
     await database.set_status(mentor_id, 'rejected')
     caption = await format_profile(mentor_id) + f"\n{MENTOR_REJECTED}"
     await callback.message.edit_caption(caption=caption)
+    await callback.message.edit_reply_markup()
     await callback.bot.send_message(chat_id=mentor_id, text=YOU_HAVE_BEEN_REJECTED_MENTOR)
     await callback.answer("Rejected ❌")
 
@@ -237,6 +239,7 @@ async def user_profile_reply_cmd(callback: CallbackQuery):
     user_id = int(parts[1]) 
     text = await format_profile(user_id)
     photo = await format_profile_image(user_id)
+    await callback.message.edit_reply_markup()
     await callback.message.answer_document(document=photo, caption=text, parse_mode="HTML")
     await callback.answer()
 
@@ -315,6 +318,7 @@ async def paginate_users(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("design:"))
 async def send_design_cmd(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup()
     user_id = int(callback.data.split(":")[1])
     user = await database.get_user_by_id(user_id)
     await state.update_data(selected_user_id=user_id)
@@ -685,6 +689,7 @@ async def send_messages_cmd(message: Message):
 
 @router.callback_query(F.data.startswith("send_messages:"))
 async def message_text(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup()
     receivers = callback.data.split(":")[1]
     if receivers == "all":
         users = await database.get_all_users()
@@ -729,6 +734,7 @@ async def send_messages_cmd(message: Message):
 
 @router.callback_query(F.data.startswith("ask_addresses:"))
 async def message_text(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup()
     receivers = callback.data.split(":")[1]
     if receivers == "all":
         users = await database.get_all_users()

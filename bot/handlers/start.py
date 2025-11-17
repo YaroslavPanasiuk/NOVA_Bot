@@ -184,6 +184,7 @@ async def send_reponse_back(message: Message, state: FSMContext):
 @router.callback_query(F.data == 'set_address')
 async def send_address(callback: CallbackQuery, state: FSMContext):
     await state.set_state(GeneralStates.waiting_for_address)
+    callback.message.edit_reply_markup()
     await callback.message.answer(ASK_FOR_ADDRESS_PROMPT)
     await callback.answer()
 
