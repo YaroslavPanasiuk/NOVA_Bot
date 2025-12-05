@@ -722,6 +722,27 @@ async def send_message(message: Message, state: FSMContext):
     await state.clear()
 
 
+@router.message(AdminProfile.waiting_for_message, F.photo)
+async def send_message(message: Message, state: FSMContext):
+    data = await state.get_data()
+    users = data.get("selected_users")
+    if not users:
+        await message.answer("⚠️ Користувачів не знайдено.")
+        await state.clear()
+        return
+
+    await broadcast_message(
+        bot=message.bot,
+        message_text=message.caption,
+        user_list=users,
+        sender_id=message.from_user.id,
+        type="photo",
+        file_id=message.photo[-1].file_id
+    )
+
+    await state.clear()
+
+
 
 @router.message((F.text == "/ask_addresses"))
 async def send_messages_cmd(message: Message):
@@ -764,6 +785,29 @@ async def send_message(message: Message, state: FSMContext):
         user_list=users,
         sender_id=message.from_user.id,
         kb=kb
+    )
+
+    await state.clear()
+
+
+@router.message(AdminProfile.waiting_for_question, F.photo)
+async def send_message(message: Message, state: FSMContext):
+    data = await state.get_data()
+    users = data.get("selected_users")
+    if not users:
+        await message.answer("⚠️ Користувачів не знайдено.")
+        await state.clear()
+        return
+
+    kb = text_kb(text=ASK_FOR_ADDRESS_BUTTON, callback='set_address')
+    await broadcast_message(
+        bot=message.bot,
+        message_text=message.caption,
+        user_list=users,
+        sender_id=message.from_user.id,
+        kb=kb,
+        type="photo",
+        file_id=message.photo[-1].file_id
     )
 
     await state.clear()
