@@ -162,8 +162,8 @@ async def mentor_goal(message: Message, state: FSMContext):
         return
     participant = await database.get_user_by_id(message.from_user.id)
     mentor = await database.get_user_by_id(participant['mentor_id'])
-    if message.text == mentor['jar_url']:
-        return await message.answer(SAME_JAR_URL)
+    #if message.text == mentor['jar_url']:
+    #    return await message.answer(SAME_JAR_URL)
     await state.update_data(jar_url=message.text)
     await state.set_state(ParticipantProfile.photo)
     await database.set_jar(telegram_id=message.from_user.id, jar_url=message.text)
