@@ -418,6 +418,17 @@ async def get_users_with_no_design():
         #print(list(map(lambda row: row[2],rows)))
         return [dict(r) for r in rows]
 
+# Get users for sending design
+async def get_users_with_no_address():
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        rows = await conn.fetch(f"""
+            SELECT * FROM bot_users 
+            WHERE nova_post_address='';
+
+        """)
+        return [dict(r) for r in rows]
+
 # Get pending mentors
 async def get_pending_mentors():
     async with pool.acquire() as conn:

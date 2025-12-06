@@ -749,7 +749,10 @@ async def send_messages_cmd(message: Message):
     if str(message.from_user.id) != TECH_SUPPORT_ID and str(message.from_user.id) not in ADMINS:
         await message.answer(NOT_ADMIN)
         return
-    kb = send_messages_kb(callback_data_prefix="ask_addresses")
+    kb = send_messages_kb(
+        callback_data_prefix="ask_addresses",
+        additional_buttons=[[InlineKeyboardButton(text="Надіслати всім, хто не вказав адресу", callback_data="ask_addresses:no_address")]]
+        )
     await message.answer(SELECT_USERS, reply_markup=kb)
 
 
@@ -763,6 +766,8 @@ async def message_text(callback: CallbackQuery, state: FSMContext):
         users = await database.get_approved_mentors()
     elif receivers == "participants":
         users = await database.get_approved_participants()
+    elif receivers == "no_address":
+        users = await database.get_users_with_no_address()
     await state.update_data(selected_users=users)
     await state.set_state(AdminProfile.waiting_for_question)
     await callback.message.answer(f"✍️ Напиши текст повідомлення для обраних користувачів (відмінити - /cancel)")
@@ -785,29 +790,6 @@ async def send_message(message: Message, state: FSMContext):
         user_list=users,
         sender_id=message.from_user.id,
         kb=kb
-    )
-
-    await state.clear()
-
-
-@router.message(AdminProfile.waiting_for_question, F.photo)
-async def send_message(message: Message, state: FSMContext):
-    data = await state.get_data()
-    users = data.get("selected_users")
-    if not users:
-        await message.answer("⚠️ Користувачів не знайдено.")
-        await state.clear()
-        return
-
-    kb = text_kb(text=ASK_FOR_ADDRESS_BUTTON, callback='set_address')
-    await broadcast_message(
-        bot=message.bot,
-        message_text=message.caption,
-        user_list=users,
-        sender_id=message.from_user.id,
-        kb=kb,
-        type="photo",
-        file_id=message.photo[-1].file_id
     )
 
     await state.clear()
