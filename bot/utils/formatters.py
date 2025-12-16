@@ -57,7 +57,7 @@ async def format_mentor_profile_view(mentor_id: int):
     text = mentor.get('description', "No description provided.")
     amount = Decimal(mentor.get('jar_amount', 0).strip().replace('₴', '').replace(' ', ''))
     goal = Decimal(mentor.get('fundraising_goal', 0))
-    percentage = f"({amount / goal * 100}%)" if mentor.get('fundraising_goal')  and mentor.get('jar_amount') else ''
+    percentage = f"({amount / goal * 100:.2f}%)" if mentor.get('fundraising_goal')  and mentor.get('jar_amount') else ''
     text += f"\n\nЗібрана сума: {amount}₴ {percentage}"
     file_id = await database.get_user_design_animation(mentor_id)
     type = 'animation'
