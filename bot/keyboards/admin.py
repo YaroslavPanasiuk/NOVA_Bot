@@ -80,3 +80,14 @@ def send_messages_kb(callback_data_prefix="send_messages", additional_buttons=No
     )
     keyboard.inline_keyboard.extend(additional_buttons or [])
     return keyboard
+
+
+def ask_addresses_kb(additional_buttons=None):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Надіслати учасникам, які зібрали 3000грн і більше", callback_data=f"ask_addresses:participants")],
+            [InlineKeyboardButton(text="Надіслати лише амбасадорам, які зібрали 50000грн і більше", callback_data=f"ask_addresses:mentors")]
+        ]
+    )
+    keyboard.inline_keyboard.extend(additional_buttons or [])
+    return keyboard

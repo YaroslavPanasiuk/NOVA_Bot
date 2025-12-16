@@ -86,8 +86,9 @@ def format_amount(value: float) -> str:
         return value
 
 
-async def format_user_list() -> str:
-    users = await database.get_all_users()
+async def format_user_list(users=None) -> str:
+    if users is None:
+        users = await database.get_all_users()
 
     if not users:
         return None
@@ -96,9 +97,9 @@ async def format_user_list() -> str:
     text_lines = [REGISTERED_USERS_HEADER]
     for u in users:
         if u['role'] == "mentor":
-            role_str = f" | Status: {u['status']}"
+            role_str = f" | Статус: {u['status']}"
         elif u['role'] == "participant":
-            role_str = f" | Mentor: {u['mentor_id']}"
+            role_str = f" | Амбасадор: {u['mentor_id']}"
         else:
             role_str = ""
         if role_str == None:
@@ -109,7 +110,7 @@ async def format_user_list() -> str:
             print("exception")
             username_str = "no_username"
         text_lines.append(
-            f"ID: {u['telegram_id']} | Name: {u['default_name']} | Fullname: {u['first_name']} {u['last_name']} | Username: {username_str} | Phone: {u['phone_number']} | Role: {u['role']}{role_str} | Registaerd at: {u['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
+            f"Ім'я: {u['default_name']} ({username_str}) | Роль: {u['role']}{role_str} | Прогрес: {u['jar_amount']} / {u['fundraising_goal']}₴)\n"
         )
 
     text = "\n".join(text_lines)
