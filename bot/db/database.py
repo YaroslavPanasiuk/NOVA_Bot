@@ -263,6 +263,12 @@ async def get_address(telegram_id: int):
         row = await conn.fetchrow("SELECT nova_post_address FROM bot_users WHERE telegram_id=$1", telegram_id)
         return row['nova_post_address'] if row else None
 
+async def get_jar_amount(telegram_id: int):
+    async with pool.acquire() as conn:
+        await conn.execute(f"SET search_path TO {DATABASE_NAME};")
+        row = await conn.fetchrow("SELECT jar_amount FROM bot_users WHERE telegram_id=$1", telegram_id)
+        return row['jar_amount'] if row else None
+
 
 async def update_created_at(telegram_id: int):
     async with pool.acquire() as conn:
