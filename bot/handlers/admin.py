@@ -11,7 +11,7 @@ from bot.config import ADMINS, DB_CHAT_ID, SHEET_KEY, TECH_SUPPORT_ID
 from aiogram.filters import Command
 from bot.keyboards.admin import *
 from bot.keyboards.common import role_choice_kb, url_kb, text_kb
-from bot.utils.formatters import format_profile, format_user_list, format_profile_image
+from bot.utils.formatters import format_profile, format_user_list, format_profile_image, send_long_message
 from bot.utils.texts import *
 from bot.utils.files import reupload_as_photo
 from bot.utils.spreadsheets import export_users_to_sheet
@@ -744,6 +744,27 @@ async def send_message(message: Message, state: FSMContext):
     await state.clear()
 
 
+@router.message(AdminProfile.waiting_for_message, F.video)
+async def send_message(message: Message, state: FSMContext):
+    data = await state.get_data()
+    users = data.get("selected_users")
+    if not users:
+        await message.answer("⚠️ Користувачів не знайдено.")
+        await state.clear()
+        return
+
+    await broadcast_message(
+        bot=message.bot,
+        message_text=message.caption,
+        user_list=users,
+        sender_id=message.from_user.id,
+        type="video",
+        file_id=message.video.file_id
+    )
+
+    await state.clear()
+
+
 
 @router.message((F.text == "/ask_addresses"))
 async def send_messages_cmd(message: Message):
@@ -762,19 +783,24 @@ async def message_text(callback: CallbackQuery, state: FSMContext):
     selected_users = []
     if receivers == "mentors":
         for user in users:
-            amount = Decimal(user.get('jar_amount', 0).strip().replace('₴', '').replace(' ', ''))
+            amount_str = user.get('jar_amount', 0).strip().replace('₴', '').replace(' ', '')
+            amount = Decimal(amount_str) if amount_str else Decimal('0')
             if user['nova_post_address'] == '' and amount >= Decimal('50000') and user['role'] == 'mentor' and user['status'] == 'approved':
                 selected_users.append(user)
     elif receivers == "participants":
         for user in users:
-            amount = Decimal(user.get('jar_amount', 0).strip().replace('₴', '').replace(' ', ''))
+            amount_str = user.get('jar_amount', 0).strip().replace('₴', '').replace(' ', '')
+            amount = Decimal(amount_str) if amount_str else Decimal('0')
             if user['nova_post_address'] == '' and amount >= Decimal('3000') and user['role'] == 'participant' and user['status'] == 'approved':
                 selected_users.append(user)
 
     await state.update_data(selected_users=selected_users)
     await state.set_state(AdminProfile.waiting_for_question)
     user_list = await format_user_list(selected_users)
-    await callback.message.answer(f"Ти обрав {len(selected_users)} користувачів для запиту адрес:\n\n{user_list}")
+    if len(selected_users) < 50:
+        await send_long_message(callback.message.bot, callback.message.chat.id, f"Ти обрав {len(selected_users)} користувачів для запиту адрес:\n\n{user_list}")
+    else:
+        await callback.message.answer(f"Ти обрав {len(selected_users)} користувачів для запиту адрес")
     await callback.message.answer(f"✍️ Напиши текст повідомлення для обраних користувачів (відмінити - /cancel)")
     await callback.answer()
 
@@ -812,7 +838,7 @@ async def send_message(message: Message, state: FSMContext):
     kb = text_kb(text=ASK_FOR_ADDRESS_BUTTON, callback='set_address')
     await broadcast_message(
         bot=message.bot,
-        message_text=message.text,
+        message_text=message.caption,
         user_list=users,
         sender_id=message.from_user.id,
         kb=kb,
@@ -835,7 +861,7 @@ async def send_message(message: Message, state: FSMContext):
     kb = text_kb(text=ASK_FOR_ADDRESS_BUTTON, callback='set_address')
     await broadcast_message(
         bot=message.bot,
-        message_text=message.text,
+        message_text=message.caption,
         user_list=users,
         sender_id=message.from_user.id,
         kb=kb,

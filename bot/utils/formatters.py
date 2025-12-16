@@ -55,7 +55,8 @@ async def format_profile_image(user_id: int):
 async def format_mentor_profile_view(mentor_id: int):
     mentor = await database.get_user_by_id(mentor_id)
     text = mentor.get('description', "No description provided.")
-    amount = Decimal(mentor.get('jar_amount', 0).strip().replace('₴', '').replace(' ', ''))
+    amount_str = mentor.get('jar_amount', 0).strip().replace('₴', '').replace(' ', '')
+    amount = Decimal(amount_str) if amount_str else Decimal('0')
     goal = Decimal(mentor.get('fundraising_goal', 0))
     percentage = f"({amount / goal * 100:.2f}%)" if mentor.get('fundraising_goal')  and mentor.get('jar_amount') else ''
     text += f"\n\nЗібрана сума: {amount}₴ {percentage}"
@@ -96,21 +97,13 @@ async def format_user_list(users=None) -> str:
     # Format output
     text_lines = [REGISTERED_USERS_HEADER]
     for u in users:
-        if u['role'] == "mentor":
-            role_str = f" | Статус: {u['status']}"
-        elif u['role'] == "participant":
-            role_str = f" | Амбасадор: {u['mentor_id']}"
-        else:
-            role_str = ""
-        if role_str == None:
-            role_str = ""
         try:
             username_str = f"@{u['username']}"
         except Exception:
             print("exception")
             username_str = "no_username"
         text_lines.append(
-            f"Ім'я: {u['default_name']} ({username_str}) | Роль: {u['role']}{role_str} | Прогрес: {u['jar_amount']} / {u['fundraising_goal']}₴)\n"
+            f"Ім'я: {u['default_name']} ({username_str}) | Роль: {u['role']} | Прогрес: {u['jar_amount']} / {u['fundraising_goal']}₴)\n"
         )
 
     text = "\n".join(text_lines)
