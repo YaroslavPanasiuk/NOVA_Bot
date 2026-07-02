@@ -91,3 +91,12 @@ def ask_addresses_kb(additional_buttons=None):
     )
     keyboard.inline_keyboard.extend(additional_buttons or [])
     return keyboard
+
+def send_announcemeent_kb():
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Надіслати собі", callback_data=f"send_announcement:myself")],
+            [InlineKeyboardButton(text="Надіслати всім учасникам", callback_data=f"send_announcement:all")]
+        ]
+    )
+    return keyboard

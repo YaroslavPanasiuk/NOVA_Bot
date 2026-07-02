@@ -14,7 +14,7 @@ from bot.keyboards.common import role_choice_kb, url_kb, text_kb
 from bot.utils.formatters import format_profile, format_user_list, format_profile_image, send_long_message
 from bot.utils.texts import *
 from bot.utils.files import reupload_as_photo
-from bot.utils.spreadsheets import export_users_to_sheet
+from bot.utils.spreadsheets import export_users_to_sheet, append_agreed_user
 from bot.utils.fetch_urls import get_jar_amount_async
 from bot.utils.broadcast import broadcast_message
 
@@ -802,6 +802,58 @@ async def message_text(callback: CallbackQuery, state: FSMContext):
     else:
         await callback.message.answer(f"Ти обрав {len(selected_users)} користувачів для запиту адрес")
     await callback.message.answer(f"✍️ Напиши текст повідомлення для обраних користувачів (відмінити - /cancel)")
+    await callback.answer()
+
+
+
+@router.message((F.text == "/send_announcement"))
+async def send_announcement_cmd(message: Message):
+    if str(message.from_user.id) != TECH_SUPPORT_ID and str(message.from_user.id) not in ADMINS:
+        await message.answer(NOT_ADMIN)
+        return
+    kb = send_announcemeent_kb()
+    await message.answer(SELECT_USERS, reply_markup=kb)
+
+
+@router.callback_query(F.data.startswith("send_announcement:"))
+async def announcement_text(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup()
+    receivers = callback.data.split(":")[1]
+    users = []
+    if receivers == "myself":
+        users = [await database.get_user_by_id(callback.from_user.id)]
+    if receivers == "all":
+        users = await database.get_all_users()
+    
+    if not users:
+        await callback.message.answer("⚠️ Користувачів не знайдено.")
+        await state.clear()
+        return
+
+    file = await database.get_file_by_name("Збір_СІМБА")
+    kb = text_kb(text=AGREE_TO_ANNOUNCEMENT_BUTTON, callback='AGREE_SIMBA')
+    text = """Доєднуйся до збору"""
+    await broadcast_message(
+        bot=callback.message.bot,
+        type="photo",
+        file_id=file.get("file_id", ""),
+        message_text=text,
+        user_list=users,
+        sender_id=callback.from_user.id,
+        kb=kb
+    )
+
+    await state.clear()
+    
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("AGREE_SIMBA"))
+async def message_text(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup()
+    await callback.message.answer(f"Дякую, з тобою сконтактує наша тіма")
+    user = await database.get_user_by_id(callback.from_user.id)
+    await append_agreed_user(user)
     await callback.answer()
 
 

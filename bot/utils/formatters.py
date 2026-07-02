@@ -46,6 +46,7 @@ async def format_profile_image(user_id: int):
     if not file_id:
         photo = await database.get_file_by_name('default_uncompressed')
         file_id = photo.get('file_id')
+    
     if file_id:
         return file_id
     photo = FSInputFile("resources/photos/default.png", filename="no-profile-picture.png")

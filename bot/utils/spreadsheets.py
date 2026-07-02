@@ -79,3 +79,20 @@ async def append_user_to_sheet(user, sheet_name: str = SHEET_NAME):
     _, row = await format_spreadsheets_data([user])
 
     sheet.append_row(row[0], value_input_option="USER_ENTERED")
+    
+    
+async def append_agreed_user(user, sheet_name: str = "СІМБА"):
+    try:
+        sheet = spreadsheet.worksheet(sheet_name)
+    except gspread.WorksheetNotFound:
+        sheet = spreadsheet.add_worksheet(title=sheet_name, rows=1000, cols=26)
+        headers = ["Контакт в телеграм", "Як приєднався"]
+        sheet.append_row(headers, value_input_option="USER_ENTERED")
+
+    if not user:
+        return
+    
+    username = user.get("username", "")
+    row = [f"@{username}", "Через бот Nova Kuznia"]
+
+    sheet.append_row(row, value_input_option="USER_ENTERED")

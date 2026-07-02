@@ -290,6 +290,10 @@ LIST_QUESTIONS_BUTTON = """Переглянути список запитань 
 ANSWER_BUTTON = """Відповісти на запитання 💬"""
 RESTART_BUTTON = """Зареєструватися заново 🔄"""
 HELP_BUTTON = """❓ Задати запитання в підтримку"""
+
+SEND_ANNOUNCEMENT_BUTTON = """Надіслати оголошення збору"""
+AGREE_TO_ANNOUNCEMENT_BUTTON = """Хочу долучитись"""
+
 YOU_HAVE_BEEN_APPROVED_MENTOR = """Вітаю, тебе затверджено як амбасадора збору 🎊"""
 YOU_HAVE_BEEN_REJECTED_MENTOR = """❌ Тобі відмовлено в ролі амбасадора"""
 YOU_HAVE_BEEN_APPROVED_PARTICIPANT = """Вітаю, {mentor} затвердив тебе як учасника своєї команди 🎊"""
