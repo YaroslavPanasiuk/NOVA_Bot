@@ -9,6 +9,7 @@ from aiogram.fsm.context import FSMContext
 from bot.handlers.participant import start_participant
 from bot.handlers.mentor import start_mentor
 from bot.utils.formatters import format_profile, format_profile_image
+from bot.utils.spreadsheets import append_agreed_user
 from bot.utils.texts import *
 from bot.config import TECH_SUPPORT_ID, ADMINS
 
@@ -195,3 +196,11 @@ async def receive_address(message: Message, state: FSMContext):
     await message.answer(ADDRESS_RECEIVED_PROMPT)
     await state.clear()
 
+
+@router.callback_query(F.data.startswith("AGREE_SIMBA"))
+async def message_text(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup()
+    await callback.message.answer(RESPONSE_TO_AGREEMENT)
+    user = await database.get_user_by_id(callback.from_user.id)
+    await append_agreed_user(user)
+    await callback.answer()

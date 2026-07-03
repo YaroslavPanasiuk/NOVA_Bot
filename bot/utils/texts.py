@@ -292,7 +292,16 @@ RESTART_BUTTON = """Зареєструватися заново 🔄"""
 HELP_BUTTON = """❓ Задати запитання в підтримку"""
 
 SEND_ANNOUNCEMENT_BUTTON = """Надіслати оголошення збору"""
+ANNOUNCEMENT_TEXT = """NOVA x UAID 
+
+Разом з <a href='https://www.instagram.com/uaid.foundation?igsh=MWRjY2NwcXZuNDJyYg=='>UAID foundation</a> ми запускаємо збір на <a href='https://www.instagram.com/p/DaTA0YeDbWB/?igsh=ODRiczM4YW45cHho'>залізний прайд</a> наземних дронів «Сімба».
+
+7 НРК це підсилення логістики та евакуації Третьої штурмової. 
+
+Вивозь життя разом з нами!
+Долучайся до дружнього збору, тисни на кнопку нижче і ми тобі напишемо🫡"""
 AGREE_TO_ANNOUNCEMENT_BUTTON = """Хочу долучитись"""
+RESPONSE_TO_AGREEMENT = """Дякую! Чекай нашу повідомку🙌"""
 
 YOU_HAVE_BEEN_APPROVED_MENTOR = """Вітаю, тебе затверджено як амбасадора збору 🎊"""
 YOU_HAVE_BEEN_REJECTED_MENTOR = """❌ Тобі відмовлено в ролі амбасадора"""

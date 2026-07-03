@@ -832,12 +832,11 @@ async def announcement_text(callback: CallbackQuery, state: FSMContext):
 
     file = await database.get_file_by_name("Збір_СІМБА")
     kb = text_kb(text=AGREE_TO_ANNOUNCEMENT_BUTTON, callback='AGREE_SIMBA')
-    text = """Доєднуйся до збору"""
     await broadcast_message(
         bot=callback.message.bot,
         type="photo",
         file_id=file.get("file_id", ""),
-        message_text=text,
+        message_text=ANNOUNCEMENT_TEXT,
         user_list=users,
         sender_id=callback.from_user.id,
         kb=kb
@@ -845,15 +844,6 @@ async def announcement_text(callback: CallbackQuery, state: FSMContext):
 
     await state.clear()
     
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("AGREE_SIMBA"))
-async def message_text(callback: CallbackQuery, state: FSMContext):
-    await callback.message.edit_reply_markup()
-    await callback.message.answer(f"Дякую, з тобою сконтактує наша тіма")
-    user = await database.get_user_by_id(callback.from_user.id)
-    await append_agreed_user(user)
     await callback.answer()
 
 
