@@ -1,3 +1,4 @@
+import asyncio
 from io import BytesIO
 from aiogram.types import BufferedInputFile
 from aiogram import Bot
@@ -25,6 +26,7 @@ async def init_resources(bot: Bot):
             uncompressed = await bot.send_document(DB_CHAT_ID, file_to_send, caption=filename)
             await database.add_file(name=f"{filename}_uncompressed", file_id=uncompressed.document.file_id, type="photo_uncompressed")
             await database.add_file(name=f"{filename}_compressed", file_id=compressed.photo[-1].file_id, type="photo_compressed")
+            await asyncio.sleep(1)
 
     for video in os.listdir("resources/videos"):
         filename = Path(video).stem
@@ -33,6 +35,7 @@ async def init_resources(bot: Bot):
             file_to_send = FSInputFile(file_path, filename=video)
             msg = await bot.send_video(DB_CHAT_ID, file_to_send, caption=filename)
             await database.add_file(name=f"{filename}", file_id=msg.video.file_id, type="video")
+            await asyncio.sleep(1)
 
     for animation in os.listdir("resources/animations"):
         filename = Path(animation).stem
@@ -41,4 +44,5 @@ async def init_resources(bot: Bot):
             file_to_send = FSInputFile(file_path, filename=animation)
             msg = await bot.send_animation(DB_CHAT_ID, file_to_send, caption=filename)
             await database.add_file(name=f"{filename}", file_id=msg.animation.file_id, type="animation")
+            await asyncio.sleep(1)
 
